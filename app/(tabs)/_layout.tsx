@@ -1,25 +1,28 @@
-import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs } from 'expo-router';
-import type { GestureResponderEvent } from 'react-native';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Colors from '@/constants/Colors';
-import { colors, spacing, typography } from '@/constants/theme';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useColorScheme } from "@/components/useColorScheme";
+import Colors from "@/constants/Colors";
+import { colors, typography } from "@/constants/theme";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Tabs } from "expo-router";
+import React from "react";
+import type { GestureResponderEvent } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 
-const TAB_BAR_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 80;
 const ADD_BUTTON_SIZE = 56;
 const MIN_TAP = 44;
 
 function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+  name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
 }) {
   return <FontAwesome size={24} style={{ marginBottom: 2 }} {...props} />;
 }
 
-function AddTabButton({ onPress }: { onPress: (e: GestureResponderEvent) => void }) {
+function AddTabButton({
+  onPress,
+}: {
+  onPress: (e: GestureResponderEvent) => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -36,16 +39,16 @@ function AddTabButton({ onPress }: { onPress: (e: GestureResponderEvent) => void
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const themeColors = Colors[colorScheme ?? 'light'];
+  const themeColors = Colors[colorScheme ?? "light"];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#FFFFFF',
+        tabBarActiveTintColor: "#FFFFFF",
         tabBarInactiveTintColor: themeColors.tabIconDefault,
         tabBarStyle: {
           backgroundColor: colors.gray[900],
-          borderTopColor: 'transparent',
+          borderTopColor: "transparent",
           height: TAB_BAR_HEIGHT,
         },
         tabBarLabelStyle: {
@@ -58,21 +61,23 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'Orders',
-          tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
+          title: "Orders",
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="shopping-cart" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
-          title: '',
+          title: "",
           tabBarIcon: () => null,
           tabBarButton: (props) => (
             <View style={styles.addWrap}>
@@ -84,14 +89,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="inbox"
         options={{
-          title: 'Inbox',
-          tabBarIcon: ({ color }) => <TabBarIcon name="comment" color={color} />,
+          title: "Inbox",
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="comment" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
-          title: 'Account',
+          title: "Account",
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
@@ -102,21 +109,21 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   addWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: TAB_BAR_HEIGHT,
   },
   addButton: {
     width: ADD_BUTTON_SIZE,
     height: ADD_BUTTON_SIZE,
     borderRadius: ADD_BUTTON_SIZE / 2,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
