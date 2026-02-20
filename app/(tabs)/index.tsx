@@ -2,7 +2,9 @@ import { colors, spacing, typography } from "@/constants/theme";
 import type { WearResponse } from "@/services/api";
 import { ApiError, clothesApi } from "@/services/api";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -23,8 +25,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { BlurView } from "expo-blur";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -278,7 +278,7 @@ function FeedCard({
 
       {/* Right-edge vignette so action buttons (Wear, 360°, Like, Share) stay visible on light media. */}
       <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.12)", "rgba(0,0,0,0.4)"]}
+        colors={["transparent", "rgba(0,0,0,0.12)", "rgba(24, 24, 24, 0.4)"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.vignetteRight}
@@ -349,7 +349,8 @@ function FeedCard({
         <ActionButton icon="share-alt" label="Share" onPress={handleShare} />
       </View>
 
-      <View style={styles.bottomGradient} pointerEvents="none" />
+      {/* Compact backdrop behind text only (no full-width bar); text shadow keeps labels readable on any image. */}
+      <View style={styles.bottomInfoBackdrop} pointerEvents="none" />
       <Pressable style={styles.bottomInfo} onPress={onPressMedia}>
         <View>
           <Text style={styles.creatorName} numberOfLines={1}>
@@ -370,7 +371,10 @@ function FeedCard({
 /** Tab bar height from (tabs)/_layout.tsx so each slide height matches viewport. */
 const TAB_BAR_HEIGHT = 64;
 
-function formatPrice(amount: number | undefined, currency: string = "USD"): string {
+function formatPrice(
+  amount: number | undefined,
+  currency: string = "USD",
+): string {
   if (amount == null) return "—";
   return `${currency} ${(amount / 100).toLocaleString()}`;
 }
@@ -394,7 +398,10 @@ function ProductDetailDrawer({
   const handleMakeItNow = () => {
     onClose();
     onMakeItNow(item);
-    router.push({ pathname: "/(tabs)/orders", params: { product: String(item.id) } });
+    router.push({
+      pathname: "/(tabs)/orders",
+      params: { product: String(item.id) },
+    });
   };
 
   const handleShare = () => onShare(item);
@@ -407,11 +414,7 @@ function ProductDetailDrawer({
       onRequestClose={onClose}
     >
       <View style={styles.drawerBackdrop}>
-        <BlurView
-          intensity={40}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.drawerBackdropDim} />
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <Pressable style={styles.drawerSheet} onPress={() => {}}>
@@ -428,7 +431,9 @@ function ProductDetailDrawer({
           </View>
           <View style={styles.drawerContent}>
             <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle} numberOfLines={2}>{item.outfitName}</Text>
+              <Text style={styles.drawerTitle} numberOfLines={2}>
+                {item.outfitName}
+              </Text>
               <Pressable
                 onPress={onClose}
                 style={styles.drawerCloseBtn}
@@ -449,7 +454,12 @@ function ProductDetailDrawer({
                   style={styles.drawerCreatorAvatar}
                 />
               ) : (
-                <View style={[styles.drawerCreatorAvatar, styles.drawerCreatorAvatarPlaceholder]}>
+                <View
+                  style={[
+                    styles.drawerCreatorAvatar,
+                    styles.drawerCreatorAvatarPlaceholder,
+                  ]}
+                >
                   <FontAwesome name="user" size={20} color={colors.gray[500]} />
                 </View>
               )}
@@ -484,7 +494,11 @@ function ProductDetailDrawer({
                   pressed && { opacity: 0.8 },
                 ]}
               >
-                <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
+                <FontAwesome
+                  name="share-alt"
+                  size={18}
+                  color={colors.gray[700]}
+                />
               </Pressable>
             </View>
           </View>
@@ -506,10 +520,13 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onListLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
-    const { height } = e.nativeEvent.layout;
-    if (height > 0) setListHeight(height);
-  }, []);
+  const onListLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) => {
+      const { height } = e.nativeEvent.layout;
+      if (height > 0) setListHeight(height);
+    },
+    [],
+  );
 
   const openProductDrawer = useCallback((item: FeedItem) => {
     setSelectedItem(item);
@@ -1012,13 +1029,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: typography.fontFamily.sans,
   },
-  bottomGradient: {
+  bottomInfoBackdrop: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 88,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    left: spacing[4],
+    right: spacing[4],
+    bottom: spacing[4],
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0)",
   },
   bottomInfo: {
     position: "absolute",
@@ -1034,12 +1052,18 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
     color: "#FFFFFF",
     fontFamily: typography.fontFamily.sans,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   outfitName: {
     fontSize: typography.fontSize.sm,
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255,255,255,0.95)",
     marginTop: 2,
     fontFamily: typography.fontFamily.sans,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   avatar: {
     width: 44,
