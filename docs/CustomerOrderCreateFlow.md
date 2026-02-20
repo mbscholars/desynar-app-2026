@@ -230,7 +230,18 @@ This document describes the **logic, aim, and feel** of the customer order-creat
 
 ---
 
-## 12. Summary table
+## 12. Mobile (Expo) implementation note
+
+On the home feed, tapping a product opens a **bottom sheet** (not a full-screen modal) built with `@gorhom/bottom-sheet` (`BottomSheetModal`). The sheet presents:
+
+1. **Product panel** — Title, price, creator, category, “Make it now”, share.
+2. **“Who is this for?” panel** — Horizontal list of measurement profile cards; “Add to Cart” and “Check out Now” in a fixed footer.
+
+The sheet uses a 92% snap point, supports **pan-down-to-close**, and uses `BottomSheetModalProvider` at the app root. The close (X) and “Create a profile” actions call `dismiss()` so the sheet animates closed; `onDismiss` notifies the parent to clear selection and visibility.
+
+---
+
+## 13. Summary table
 
 | Step | Name          | Aim                                     | Primary action          |
 | ---- | ------------- | --------------------------------------- | ----------------------- |

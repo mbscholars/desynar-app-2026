@@ -10,7 +10,8 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import {
   ActivityIndicator,
   Alert,
@@ -546,7 +547,38 @@ function ProductDetailDrawer({
     if (item) onShare(item);
   }, [item, onShare]);
 
-  if (!item) return null;
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ["92%"], []);
+
+  useEffect(() => {
+    if (visible && item) {
+      bottomSheetRef.current?.present();
+    } else {
+      bottomSheetRef.current?.dismiss();
+    }
+  }, [visible, item]);
+
+  const handleDismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  if (!item) {
+    return (
+      <BottomSheetModal
+        ref={bottomSheetRef}
+        snapPoints={snapPoints}
+        onDismiss={handleDismiss}
+        enablePanDownToClose
+        handleComponent={null}
+        backgroundStyle={styles.drawerSheetBackground}
+        style={styles.drawerSheetContainer}
+      >
+        <BottomSheetView style={styles.drawerSheet}>
+        <View />
+      </BottomSheetView>
+      </BottomSheetModal>
+    );
+  }
 
   const drawerContentWidth = SCREEN_WIDTH;
   const translateX = slideAnim.interpolate({
@@ -562,7 +594,7 @@ function ProductDetailDrawer({
             {item.outfitName}
           </Text>
           <Pressable
-            onPress={onClose}
+            onPress={() => bottomSheetRef.current?.dismiss()}
             style={styles.drawerCloseBtn}
             hitSlop={12}
             accessibilityLabel="Close"
@@ -672,7 +704,7 @@ function ProductDetailDrawer({
           </Text>
           <Pressable
             onPress={() => {
-              onClose();
+              bottomSheetRef.current?.dismiss();
               router.push("/measurements");
             }}
             style={({ pressed }) => [
@@ -829,45 +861,43 @@ function ProductDetailDrawer({
   );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      snapPoints={snapPoints}
+      onDismiss={handleDismiss}
+      enablePanDownToClose
+      handleComponent={null}
+      backgroundStyle={styles.drawerSheetBackground}
+      style={styles.drawerSheetContainer}
     >
-      <View style={styles.drawerBackdrop}>
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-        <View style={styles.drawerBackdropDim} />
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <Pressable style={styles.drawerSheet} onPress={() => {}}>
-          <View style={styles.drawerSheetBlurWrap}>
-            <BlurView
-              intensity={80}
-              tint="light"
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.drawerSheetGlassOverlay} />
-          </View>
-          <View style={styles.drawerHandleWrap}>
-            <View style={styles.drawerHandle} />
-          </View>
-          <View style={styles.drawerContentWrap}>
-            <Animated.View
-              style={[
-                styles.drawerSlidingContent,
-                {
-                  width: drawerContentWidth * 2,
-                  transform: [{ translateX }],
-                },
-              ]}
-            >
-              {productPanel}
-              {profilesPanel}
-            </Animated.View>
-          </View>
-        </Pressable>
-      </View>
-    </Modal>
+      <BottomSheetView style={styles.drawerSheet}>
+        <View style={styles.drawerSheetBlurWrap}>
+          <BlurView
+            intensity={80}
+            tint="light"
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.drawerSheetGlassOverlay} />
+        </View>
+        <View style={styles.drawerHandleWrap}>
+          <View style={styles.drawerHandle} />
+        </View>
+        <View style={styles.drawerContentWrap}>
+          <Animated.View
+            style={[
+              styles.drawerSlidingContent,
+              {
+                width: drawerContentWidth * 2,
+                transform: [{ translateX }],
+              },
+            ]}
+          >
+            {productPanel}
+            {profilesPanel}
+          </Animated.View>
+        </View>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 }
 
@@ -1115,19 +1145,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[900] },
   loginModalWrap: { flex: 1 },
   listWrap: { flex: 1 },
-  drawerBackdrop: {
+  drawerSheetContainer: {
     flex: 1,
-    justifyContent: "flex-end",
   },
-  drawerBackdropDim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  drawerSheet: {
+  drawerSheetBackground: {
+    backgroundColor: "transparent",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: "350",
-    maxHeight: "350",
+    overflow: "hidden",
+  },
+  drawerSheet: {
+    flex: 1,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: spacing[8],
     overflow: "hidden",
   },
