@@ -19,6 +19,7 @@ export interface WearResponse {
   id: number;
   name: string;
   description: string;
+  tags?: string[];
   status: string;
   base_price?: {
     amount: number;

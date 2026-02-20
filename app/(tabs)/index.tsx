@@ -1,17 +1,24 @@
 import { UserLogin } from "@/components/UserLogin";
-import { colors, radius, shadows, spacing, typography } from "@/constants/theme";
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { useMeasurementProfiles } from "@/context/MeasurementProfilesContext";
 import type { WearResponse } from "@/services/api";
 import { ApiError, clothesApi } from "@/services/api";
 import { getRelationshipLabel } from "@/types/measurement";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +50,8 @@ export type FeedItem = {
   creatorName: string;
   creatorAvatar?: string;
   outfitName: string;
+  description?: string;
+  tags?: string[];
   likes: number;
   isLiked: boolean;
   price?: number;
@@ -63,6 +72,8 @@ function wearToFeedItem(w: WearResponse): FeedItem {
     creatorName: w.creator?.name ?? "Unknown",
     creatorAvatar: w.creator?.avatar,
     outfitName: w.name,
+    description: w.description,
+    tags: w.tags,
     likes: w.likes_count ?? 0,
     isLiked: w.is_liked ?? false,
     price: w.base_price?.amount,
@@ -471,13 +482,15 @@ function ProductDetailDrawer({
   item,
   visible,
   onClose,
+  onAddToCart,
   onMakeItNow,
   onShare,
 }: {
   item: FeedItem | null;
   visible: boolean;
   onClose: () => void;
-  onMakeItNow: (item: FeedItem, selectedProfileIds: string[]) => void;
+  onAddToCart: (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => void;
+  onMakeItNow: (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => void;
   onShare: (item: FeedItem) => void;
 }) {
   const router = useRouter();
@@ -535,20 +548,30 @@ function ProductDetailDrawer({
   const handleContinueToOrder = useCallback(() => {
     if (!item) return;
     const ids = Array.from(selectedProfileIds);
-    onMakeItNow(item, ids);
-    onClose();
-    router.push({
-      pathname: "/(tabs)/orders",
-      params: { product: String(item.id), profileIds: ids.join(",") },
-    });
-  }, [item, selectedProfileIds, onMakeItNow, onClose]);
+    const names = profiles
+      .filter((p) => selectedProfileIds.has(p.id))
+      .map((p) => p.name);
+    onMakeItNow(item, ids, names);
+    bottomSheetRef.current?.dismiss();
+  }, [item, selectedProfileIds, profiles, onMakeItNow]);
+
+  const handleAddToCart = useCallback(() => {
+    if (!item || selectedProfileIds.size === 0) return;
+    const ids = Array.from(selectedProfileIds);
+    const names = profiles
+      .filter((p) => selectedProfileIds.has(p.id))
+      .map((p) => p.name);
+    onAddToCart(item, ids, names);
+    bottomSheetRef.current?.dismiss();
+  }, [item, selectedProfileIds, profiles, onAddToCart]);
 
   const handleShare = useCallback(() => {
     if (item) onShare(item);
   }, [item, onShare]);
 
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["92%"], []);
+  const maxDynamicContentSize = useMemo(() => SCREEN_HEIGHT * 0.92, []);
+  const minSheetHeight = 360;
 
   useEffect(() => {
     if (visible && item) {
@@ -566,16 +589,19 @@ function ProductDetailDrawer({
     return (
       <BottomSheetModal
         ref={bottomSheetRef}
-        snapPoints={snapPoints}
+        enableDynamicSizing
+        maxDynamicContentSize={maxDynamicContentSize}
         onDismiss={handleDismiss}
         enablePanDownToClose
         handleComponent={null}
         backgroundStyle={styles.drawerSheetBackground}
         style={styles.drawerSheetContainer}
       >
-        <BottomSheetView style={styles.drawerSheet}>
-        <View />
-      </BottomSheetView>
+        <BottomSheetView
+          style={[styles.drawerSheet, { minHeight: minSheetHeight }]}
+        >
+          <View />
+        </BottomSheetView>
       </BottomSheetModal>
     );
   }
@@ -606,6 +632,22 @@ function ProductDetailDrawer({
           {formatPrice(item.price, item.currency)}
         </Text>
         <Text style={styles.drawerPriceLabel}>per piece</Text>
+
+        {item.description ? (
+          <Text style={styles.drawerDescription} numberOfLines={4}>
+            {item.description}
+          </Text>
+        ) : null}
+
+        {item.tags && item.tags.length > 0 ? (
+          <View style={styles.drawerTagsWrap}>
+            {item.tags.map((tag) => (
+              <Text key={tag} style={styles.drawerTag} numberOfLines={1}>
+                {tag.startsWith("#") ? tag : `#${tag}`}
+              </Text>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.drawerCreatorRow}>
           {item.creatorAvatar ? (
@@ -735,88 +777,89 @@ function ProductDetailDrawer({
               }}
             >
               <FlatList
-              data={profiles}
-              keyExtractor={(p) => p.id}
-              horizontal
-              showsHorizontalScrollIndicator={true}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[
-                styles.drawerProfilesGridContent,
-                { paddingLeft: 0, paddingRight: spacing[4] },
-              ]}
-              style={styles.drawerProfilesScrollHorizontal}
-              ItemSeparatorComponent={() => (
-                <View style={{ width: spacing[2] }} />
-              )}
-              renderItem={({ item: profile }) => {
-                const isSelected = selectedProfileIds.has(profile.id);
-                const thumbUri = profile.frontImageUri ?? null;
-                const relationshipLabel = getRelationshipLabel(
-                  profile.relationship,
-                  profile.relationshipCustom,
-                );
-                const monthYear = formatMonthYear(
-                  profile.updatedAt || profile.createdAt,
-                );
-                const subtitle =
-                  monthYear ? `${relationshipLabel} · ${monthYear}` : relationshipLabel;
-                const cardWidth =
-                  (drawerContentWidth - spacing[6] * 2 - spacing[2]) / 2;
-              return (
-                <Pressable
-                  onPress={() => toggleProfile(profile.id)}
-                  style={[
-                    styles.drawerProfileBlock,
-                    { width: cardWidth },
-                    isSelected && styles.drawerProfileBlockSelected,
-                  ]}
-                >
-                  <View style={styles.drawerProfileBlockThumb}>
-                    {thumbUri ? (
-                      <Image
-                        source={{ uri: thumbUri }}
-                        style={StyleSheet.absoluteFill}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <FontAwesome
-                        name="user"
-                        size={28}
-                        color={colors.gray[400]}
-                      />
-                    )}
-                    <LinearGradient
-                      colors={["rgba(0,0,0,0.75)", "transparent"]}
-                      style={styles.drawerProfileBlockOverlay}
-                    />
-                    <View style={styles.drawerProfileBlockCaption}>
-                      <Text
-                        style={styles.drawerProfileBlockName}
-                        numberOfLines={1}
-                      >
-                        {profile.name}
-                      </Text>
-                      <Text
-                        style={styles.drawerProfileBlockSubtitle}
-                        numberOfLines={1}
-                      >
-                        {subtitle}
-                      </Text>
-                    </View>
-                  </View>
-                  {isSelected ? (
-                    <View style={styles.drawerProfileBlockCheck}>
-                      <FontAwesome
-                        name="check"
-                        size={12}
-                        color={colors.primary[500]}
-                      />
-                    </View>
-                  ) : null}
-                </Pressable>
-              );
-              }}
-            />
+                data={profiles}
+                keyExtractor={(p) => p.id}
+                horizontal
+                showsHorizontalScrollIndicator={true}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.drawerProfilesGridContent,
+                  { paddingLeft: 0, paddingRight: spacing[4] },
+                ]}
+                style={styles.drawerProfilesScrollHorizontal}
+                ItemSeparatorComponent={() => (
+                  <View style={{ width: spacing[2] }} />
+                )}
+                renderItem={({ item: profile }) => {
+                  const isSelected = selectedProfileIds.has(profile.id);
+                  const thumbUri = profile.frontImageUri ?? null;
+                  const relationshipLabel = getRelationshipLabel(
+                    profile.relationship,
+                    profile.relationshipCustom,
+                  );
+                  const monthYear = formatMonthYear(
+                    profile.updatedAt || profile.createdAt,
+                  );
+                  const subtitle = monthYear
+                    ? `${relationshipLabel} · ${monthYear}`
+                    : relationshipLabel;
+                  const cardWidth =
+                    (drawerContentWidth - spacing[6] * 2 - spacing[2]) / 2;
+                  return (
+                    <Pressable
+                      onPress={() => toggleProfile(profile.id)}
+                      style={[
+                        styles.drawerProfileBlock,
+                        { width: cardWidth },
+                        isSelected && styles.drawerProfileBlockSelected,
+                      ]}
+                    >
+                      <View style={styles.drawerProfileBlockThumb}>
+                        {thumbUri ? (
+                          <Image
+                            source={{ uri: thumbUri }}
+                            style={StyleSheet.absoluteFill}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <FontAwesome
+                            name="user"
+                            size={28}
+                            color={colors.gray[400]}
+                          />
+                        )}
+                        <LinearGradient
+                          colors={["rgba(0,0,0,0.75)", "transparent"]}
+                          style={styles.drawerProfileBlockOverlay}
+                        />
+                        <View style={styles.drawerProfileBlockCaption}>
+                          <Text
+                            style={styles.drawerProfileBlockName}
+                            numberOfLines={1}
+                          >
+                            {profile.name}
+                          </Text>
+                          <Text
+                            style={styles.drawerProfileBlockSubtitle}
+                            numberOfLines={1}
+                          >
+                            {subtitle}
+                          </Text>
+                        </View>
+                      </View>
+                      {isSelected ? (
+                        <View style={styles.drawerProfileBlockCheck}>
+                          <FontAwesome
+                            name="check"
+                            size={12}
+                            color={colors.primary[500]}
+                          />
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                }}
+              />
             </View>
           </ScrollView>
           <View
@@ -827,10 +870,7 @@ function ProductDetailDrawer({
           >
             <View style={styles.drawerProfilesFooterRow}>
               <Pressable
-                onPress={() => {
-                  if (selectedProfileIds.size === 0) return;
-                  // Add to cart – placeholder for cart action
-                }}
+                onPress={handleAddToCart}
                 disabled={selectedProfileIds.size === 0}
                 style={({ pressed }) => [
                   styles.drawerCtaSecondary,
@@ -838,9 +878,7 @@ function ProductDetailDrawer({
                   pressed && selectedProfileIds.size > 0 && { opacity: 0.9 },
                 ]}
               >
-                <Text style={styles.drawerCtaSecondaryText}>
-                  Add to Cart
-                </Text>
+                <Text style={styles.drawerCtaSecondaryText}>Add to Cart</Text>
               </Pressable>
               <Pressable
                 onPress={handleContinueToOrder}
@@ -863,14 +901,17 @@ function ProductDetailDrawer({
   return (
     <BottomSheetModal
       ref={bottomSheetRef}
-      snapPoints={snapPoints}
+      enableDynamicSizing
+      maxDynamicContentSize={maxDynamicContentSize}
       onDismiss={handleDismiss}
       enablePanDownToClose
       handleComponent={null}
       backgroundStyle={styles.drawerSheetBackground}
       style={styles.drawerSheetContainer}
     >
-      <BottomSheetView style={styles.drawerSheet}>
+      <BottomSheetView
+        style={[styles.drawerSheet, { minHeight: minSheetHeight }]}
+      >
         <View style={styles.drawerSheetBlurWrap}>
           <BlurView
             intensity={80}
@@ -903,7 +944,9 @@ function ProductDetailDrawer({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { isAuthenticated, setAuthenticated } = useAuth();
+  const { addItem } = useCart();
   const listRef = useRef<FlatList>(null);
   const [listHeight, setListHeight] = useState(SCREEN_HEIGHT - TAB_BAR_HEIGHT);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
@@ -946,6 +989,21 @@ export default function HomeScreen() {
     setDrawerVisible(false);
     setSelectedItem(null);
   }, []);
+
+  const handleAddToCart = useCallback(
+    (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => {
+      addItem(item, selectedProfileIds, 1, selectedProfileNames);
+    },
+    [addItem],
+  );
+
+  const handleMakeItNow = useCallback(
+    (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => {
+      addItem(item, selectedProfileIds, 1, selectedProfileNames);
+      (router.push as (href: string) => void)("/review");
+    },
+    [addItem, router],
+  );
 
   const handleShare = useCallback(async (item: FeedItem) => {
     try {
@@ -1133,7 +1191,8 @@ export default function HomeScreen() {
           item={selectedItem}
           visible={drawerVisible}
           onClose={closeProductDrawer}
-          onMakeItNow={(_item, _selectedProfileIds) => {}}
+          onAddToCart={handleAddToCart}
+          onMakeItNow={handleMakeItNow}
           onShare={handleShare}
         />
       </View>
@@ -1155,7 +1214,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   drawerSheet: {
-    flex: 1,
+    minHeight: 300,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: spacing[8],
@@ -1235,6 +1294,24 @@ const styles = StyleSheet.create({
     color: colors.gray[500],
     fontFamily: typography.fontFamily.sans,
     marginTop: 2,
+  },
+  drawerDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[700],
+    fontFamily: typography.fontFamily.sans,
+    lineHeight: 20,
+    marginTop: spacing[4],
+  },
+  drawerTagsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing[2],
+    marginTop: spacing[3],
+  },
+  drawerTag: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary[600],
+    fontFamily: typography.fontFamily.sans,
   },
   drawerCreatorRow: {
     flexDirection: "row",

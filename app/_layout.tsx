@@ -15,6 +15,7 @@ import { StyleSheet } from "react-native";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import { MeasurementProfilesProvider } from "@/context/MeasurementProfilesContext";
 
 export {
@@ -60,9 +61,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <AuthProvider>
         <MeasurementProfilesProvider>
-          <BottomSheetModalProvider>
-            <RootLayoutNav />
-          </BottomSheetModalProvider>
+          <CartProvider>
+            <BottomSheetModalProvider>
+              <RootLayoutNav />
+            </BottomSheetModalProvider>
+          </CartProvider>
         </MeasurementProfilesProvider>
       </AuthProvider>
     </GestureHandlerRootView>
@@ -82,6 +85,7 @@ function RootLayoutNav() {
         <Stack.Screen name="order/[reference]" />
         <Stack.Screen name="chat/[id]" />
         <Stack.Screen name="measurements" />
+        <Stack.Screen name="review" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
