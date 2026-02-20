@@ -1,59 +1,128 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-
+import { Tabs } from 'expo-router';
+import type { GestureResponderEvent } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Colors from '@/constants/Colors';
+import { colors, spacing, typography } from '@/constants/theme';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
+const TAB_BAR_HEIGHT = 64;
+const ADD_BUTTON_SIZE = 56;
+const MIN_TAP = 44;
+
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+  return <FontAwesome size={24} style={{ marginBottom: 2 }} {...props} />;
+}
+
+function AddTabButton({ onPress }: { onPress: (e: GestureResponderEvent) => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.addButton,
+        pressed && styles.addButtonPressed,
+      ]}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+    >
+      <FontAwesome name="plus" size={28} color={colors.primary[900]} />
+    </Pressable>
+  );
 }
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const themeColors = Colors[colorScheme ?? 'light'];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: themeColors.tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: colors.gray[900],
+          borderTopColor: 'transparent',
+          height: TAB_BAR_HEIGHT,
+        },
+        tabBarLabelStyle: {
+          fontSize: typography.fontSize.xs,
+          fontFamily: typography.fontFamily.sans,
+        },
+        headerShown: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: 'Home',
+          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: '',
+          tabBarIcon: () => null,
+          tabBarButton: (props) => (
+            <View style={styles.addWrap}>
+              <AddTabButton onPress={(e) => props.onPress?.(e)} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="inbox"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Inbox',
+          tabBarIcon: ({ color }) => <TabBarIcon name="comment" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Account',
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  addWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: TAB_BAR_HEIGHT,
+  },
+  addButton: {
+    width: ADD_BUTTON_SIZE,
+    height: ADD_BUTTON_SIZE,
+    borderRadius: ADD_BUTTON_SIZE / 2,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  addButtonPressed: { opacity: 0.9 },
+});
