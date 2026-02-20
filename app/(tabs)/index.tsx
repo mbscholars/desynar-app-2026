@@ -1,3 +1,5 @@
+import { UserLogin } from "@/components/UserLogin";
+import { useAuth } from "@/context/AuthContext";
 import { colors, spacing, typography } from "@/constants/theme";
 import type { WearResponse } from "@/services/api";
 import { ApiError, clothesApi } from "@/services/api";
@@ -567,6 +569,7 @@ function ProductDetailDrawer({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { isAuthenticated, setAuthenticated } = useAuth();
   const listRef = useRef<FlatList>(null);
   const [listHeight, setListHeight] = useState(SCREEN_HEIGHT - TAB_BAR_HEIGHT);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
@@ -576,6 +579,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  /** Show login modal after 3s of activity when not authenticated. */
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const t = setTimeout(() => setShowLoginModal(true), 3000);
+      return () => clearTimeout(t);
+    }
+    setShowLoginModal(false);
+  }, [isAuthenticated]);
+
+  /** Close login modal = continue as guest. */
+  const handleLoginClose = useCallback(() => {
+    setAuthenticated(true);
+  }, [setAuthenticated]);
 
   const onListLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
@@ -689,7 +707,19 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <>
+      <Modal
+        visible={!isAuthenticated && showLoginModal}
+        animationType="slide"
+        onRequestClose={handleLoginClose}
+        statusBarTranslucent
+        transparent
+      >
+        <View style={styles.loginModalWrap}>
+          <UserLogin onClose={handleLoginClose} />
+        </View>
+      </Modal>
+      <View style={styles.container}>
       <LinearGradient
         colors={["rgba(0,0,0,0.6)", "transparent"]}
         style={[styles.topBar, { paddingTop: insets.top }]}
@@ -773,11 +803,13 @@ export default function HomeScreen() {
         onShare={handleShare}
       />
     </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[900] },
+  loginModalWrap: { flex: 1 },
   listWrap: { flex: 1 },
   drawerBackdrop: {
     flex: 1,

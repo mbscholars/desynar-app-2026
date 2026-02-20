@@ -4,18 +4,28 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/constants/theme';
 
+/**
+ * Root gate: on app open, check auth via /session.
+ * - If loading: show spinner.
+ * - Once loaded: always go to home (tabs). Login is shown as a full-screen modal on home when not authenticated.
+ */
 export default function IndexScreen() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoading) return;
-    if (isAuthenticated) {
+    if (!isLoading) {
       router.replace('/(tabs)');
-    } else {
-      router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={colors.primary[500]} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

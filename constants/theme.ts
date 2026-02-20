@@ -38,6 +38,24 @@ export const colors = {
 } as const;
 
 /**
+ * Atelier / luxury login — dark fashion-grade palette.
+ * Use for cinematic login and premium surfaces.
+ */
+export const atelier = {
+  background: '#0E0E0E',
+  /** Semi-transparent dark overlay so blurred background shows through. */
+  backgroundOverlay: 'rgba(14,14,14,0.72)',
+  panel: 'rgba(22,22,22,0.75)',
+  panelBorder: 'rgba(255,255,255,0.08)',
+  panelGlow: 'rgba(255,255,255,0.04)',
+  accent: '#C6A75E',
+  cta: '#F5F5F5',
+  ctaText: '#0E0E0E',
+  muted: 'rgba(255,255,255,0.5)',
+  divider: 'rgba(255,255,255,0.12)',
+} as const;
+
+/**
  * Spacing scale (pt). Reuse Tailwind scale + custom 18, 88, 128.
  */
 export const spacing = {
@@ -142,6 +160,7 @@ export const animation = {
 
 export const theme = {
   colors,
+  atelier,
   spacing,
   radius,
   shadows,

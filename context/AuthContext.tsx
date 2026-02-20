@@ -21,28 +21,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setAuthenticatedState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // For now: no session check — always show as not authenticated so we can work on the login screen.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getToken();
-        if (cancelled) return;
-        if (token) {
-          setAuthenticatedState(true);
-          return;
-        }
-        const guest = await AsyncStorage.getItem(GUEST_AUTH_KEY);
-        if (cancelled) return;
-        setAuthenticatedState(guest === 'true');
-      } catch {
-        if (!cancelled) setAuthenticatedState(false);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setAuthenticatedState(false);
+    setIsLoading(false);
   }, []);
 
   const setAuthenticated = useCallback((value: boolean) => {
