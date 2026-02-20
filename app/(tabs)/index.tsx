@@ -124,6 +124,54 @@ function FeedCard({
   const [walkVideoUrl, setWalkVideoUrl] = useState<string | null>(null);
   const [walkLoading, setWalkLoading] = useState(false);
   const mediaScrollRef = useRef<ScrollView>(null);
+  const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const didScrollRef = useRef(false);
+
+  const TAP_MAX_DURATION_MS = 400;
+  const TAP_MAX_MOVE_PX = 25;
+
+  const handleMediaTouchStart = useCallback(
+    (e: { nativeEvent: { touches: { pageX: number; pageY: number }[] } }) => {
+      const t = e.nativeEvent.touches[0];
+      if (t) {
+        touchStartRef.current = {
+          time: Date.now(),
+          x: t.pageX,
+          y: t.pageY,
+        };
+        didScrollRef.current = false;
+      }
+    },
+    [],
+  );
+
+  const handleMediaTouchEnd = useCallback(
+    (e: { nativeEvent: { changedTouches: { pageX: number; pageY: number }[] } }) => {
+      const start = touchStartRef.current;
+      if (!start) return;
+      const ct = e.nativeEvent.changedTouches[0];
+      if (!ct) return;
+      const dx = ct.pageX - start.x;
+      const dy = ct.pageY - start.y;
+      const duration = Date.now() - start.time;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (
+        !didScrollRef.current &&
+        duration < TAP_MAX_DURATION_MS &&
+        distance < TAP_MAX_MOVE_PX
+      ) {
+        onPressMedia();
+      }
+      touchStartRef.current = null;
+      didScrollRef.current = false;
+    },
+    [onPressMedia],
+  );
+
+  const handleScrollBeginDrag = useCallback(() => {
+    didScrollRef.current = true;
+  }, []);
+
   const mediaUrls = item.mediaUrls?.length
     ? item.mediaUrls
     : item.imageUri
@@ -241,6 +289,9 @@ function FeedCard({
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMediaScroll}
         onScroll={onMediaScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onTouchStart={handleMediaTouchStart}
+        onTouchEnd={handleMediaTouchEnd}
         scrollEventThrottle={16}
         decelerationRate="fast"
         nestedScrollEnabled
@@ -262,11 +313,17 @@ function FeedCard({
         ))}
       </ScrollView>
     ) : (
-      <ImageBackground
-        source={{ uri: effectiveUrls[0] }}
-        style={styles.media}
-        resizeMode="cover"
-      />
+      <View
+        style={StyleSheet.absoluteFill}
+        onTouchStart={handleMediaTouchStart}
+        onTouchEnd={handleMediaTouchEnd}
+      >
+        <ImageBackground
+          source={{ uri: effectiveUrls[0] }}
+          style={styles.media}
+          resizeMode="cover"
+        />
+      </View>
     );
 
   return (
