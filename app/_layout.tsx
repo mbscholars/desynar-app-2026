@@ -21,10 +21,15 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Metropolis is the brand font (see assets/fonts/README.md). Until added, we use SpaceMono as fallback and alias it as Metropolis so theme.typography.fontFamily.sans works.
+// Metropolis: brand font per docs/MetropolisFont.md; weights from assets/fonts/metropolis/.
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    Metropolis: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    Metropolis: require('../assets/fonts/metropolis/Metropolis-Regular.otf'),
+    MetropolisMedium: require('../assets/fonts/metropolis/Metropolis-Medium.otf'),
+    MetropolisSemiBold: require('../assets/fonts/metropolis/Metropolis-SemiBold.otf'),
+    MetropolisBold: require('../assets/fonts/metropolis/Metropolis-Bold.otf'),
+    MetropolisLight: require('../assets/fonts/metropolis/Metropolis-Light.otf'),
+    MetropolisExtraBold: require('../assets/fonts/metropolis/Metropolis-ExtraBold.otf'),
     ...FontAwesome.font,
   });
 

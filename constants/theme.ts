@@ -101,12 +101,17 @@ export const shadows = {
 } as const;
 
 /**
- * Typography — font family and sizes.
- * Font: Metropolis (load via expo-font); fallback to system when not loaded.
+ * Typography — Metropolis per docs/MetropolisFont.md (assets/fonts/metropolis).
+ * Weights loaded in app/_layout; use these families for consistent rendering (Android).
  */
 export const typography = {
   fontFamily: {
-    sans: 'Metropolis',       // primary; fallback set in _layout
+    sans: 'Metropolis',
+    light: 'MetropolisLight',
+    medium: 'MetropolisMedium',
+    semibold: 'MetropolisSemiBold',
+    bold: 'MetropolisBold',
+    extraBold: 'MetropolisExtraBold',
     sansFallback: 'System',
   },
   fontSize: {

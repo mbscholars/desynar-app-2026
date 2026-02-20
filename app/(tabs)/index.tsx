@@ -12,6 +12,7 @@ import {
   FlatList,
   Image,
   ImageBackground,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -22,6 +23,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -30,12 +33,15 @@ const MIN_TAP = 44;
 export type FeedItem = {
   id: number;
   imageUri: string;
-  /** All media URLs for carousel (imageUri is mediaUrls[0] when present). */
   mediaUrls: string[];
   creatorName: string;
+  creatorAvatar?: string;
   outfitName: string;
   likes: number;
   isLiked: boolean;
+  price?: number;
+  currency?: string;
+  category?: string;
 };
 
 function wearToFeedItem(w: WearResponse): FeedItem {
@@ -49,9 +55,13 @@ function wearToFeedItem(w: WearResponse): FeedItem {
     imageUri,
     mediaUrls,
     creatorName: w.creator?.name ?? "Unknown",
+    creatorAvatar: w.creator?.avatar,
     outfitName: w.name,
     likes: w.likes_count ?? 0,
     isLiked: w.is_liked ?? false,
+    price: w.base_price?.amount,
+    currency: w.base_price?.currency_code ?? "USD",
+    category: w.category?.name,
   };
 }
 
@@ -351,10 +361,134 @@ function FeedCard({
 /** Tab bar height from (tabs)/_layout.tsx so each slide height matches viewport. */
 const TAB_BAR_HEIGHT = 64;
 
+function formatPrice(amount: number | undefined, currency: string = "USD"): string {
+  if (amount == null) return "—";
+  return `${currency} ${(amount / 100).toLocaleString()}`;
+}
+
+function ProductDetailDrawer({
+  item,
+  visible,
+  onClose,
+  onMakeItNow,
+  onShare,
+}: {
+  item: FeedItem | null;
+  visible: boolean;
+  onClose: () => void;
+  onMakeItNow: (item: FeedItem) => void;
+  onShare: (item: FeedItem) => void;
+}) {
+  const router = useRouter();
+  if (!item) return null;
+
+  const handleMakeItNow = () => {
+    onClose();
+    onMakeItNow(item);
+    router.push({ pathname: "/(tabs)/orders", params: { product: String(item.id) } });
+  };
+
+  const handleShare = () => onShare(item);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.drawerBackdrop}>
+        <BlurView
+          intensity={40}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.drawerBackdropDim} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={styles.drawerSheet} onPress={() => {}}>
+          <View style={styles.drawerSheetBlurWrap}>
+            <BlurView
+              intensity={80}
+              tint="light"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.drawerSheetGlassOverlay} />
+          </View>
+          <View style={styles.drawerHandleWrap}>
+            <View style={styles.drawerHandle} />
+          </View>
+          <View style={styles.drawerContent}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle} numberOfLines={2}>{item.outfitName}</Text>
+              <Pressable
+                onPress={onClose}
+                style={styles.drawerCloseBtn}
+                hitSlop={12}
+              >
+                <FontAwesome name="times" size={18} color={colors.gray[700]} />
+              </Pressable>
+            </View>
+            <Text style={styles.drawerPrice}>
+              {formatPrice(item.price, item.currency)}
+            </Text>
+            <Text style={styles.drawerPriceLabel}>per piece</Text>
+
+            <View style={styles.drawerCreatorRow}>
+              {item.creatorAvatar ? (
+                <Image
+                  source={{ uri: item.creatorAvatar }}
+                  style={styles.drawerCreatorAvatar}
+                />
+              ) : (
+                <View style={[styles.drawerCreatorAvatar, styles.drawerCreatorAvatarPlaceholder]}>
+                  <FontAwesome name="user" size={20} color={colors.gray[500]} />
+                </View>
+              )}
+              <View style={styles.drawerCreatorInfo}>
+                <Text style={styles.drawerCreatorName}>{item.creatorName}</Text>
+                <Text style={styles.drawerCreatorTitle}>Designer</Text>
+              </View>
+            </View>
+
+            {item.category ? (
+              <View style={styles.drawerMetaRow}>
+                <Text style={styles.drawerMetaLabel}>Category</Text>
+                <Text style={styles.drawerMetaValue}>{item.category}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={handleMakeItNow}
+              style={({ pressed }) => [
+                styles.drawerCta,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <FontAwesome name="magic" size={18} color="#FFFFFF" />
+              <Text style={styles.drawerCtaText}>Make it now</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleShare}
+              style={({ pressed }) => [
+                styles.drawerShareBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
+            </Pressable>
+          </View>
+        </Pressable>
+      </View>
+    </Modal>
+  );
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const [listHeight, setListHeight] = useState(SCREEN_HEIGHT - TAB_BAR_HEIGHT);
+  const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [notificationCount] = useState(3);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -364,6 +498,27 @@ export default function HomeScreen() {
   const onListLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
     const { height } = e.nativeEvent.layout;
     if (height > 0) setListHeight(height);
+  }, []);
+
+  const openProductDrawer = useCallback((item: FeedItem) => {
+    setSelectedItem(item);
+    setDrawerVisible(true);
+  }, []);
+
+  const closeProductDrawer = useCallback(() => {
+    setDrawerVisible(false);
+    setSelectedItem(null);
+  }, []);
+
+  const handleShare = useCallback(async (item: FeedItem) => {
+    try {
+      await Share.share({
+        title: item.outfitName,
+        message: `Check out ${item.outfitName} by ${item.creatorName}`,
+      });
+    } catch {
+      // User cancelled
+    }
   }, []);
 
   const fetchFeed = useCallback(async (isRefresh = false) => {
@@ -405,12 +560,12 @@ export default function HomeScreen() {
       <View style={[styles.slide, { height: feedHeight }]}>
         <FeedCard
           item={item}
-          onPressMedia={() => {}}
+          onPressMedia={() => openProductDrawer(item)}
           onLike={() => handleLike(item)}
         />
       </View>
     ),
-    [feedHeight, handleLike],
+    [feedHeight, handleLike, openProductDrawer],
   );
 
   const getItemLayout = useCallback(
@@ -524,6 +679,14 @@ export default function HomeScreen() {
           />
         </View>
       )}
+
+      <ProductDetailDrawer
+        item={selectedItem}
+        visible={drawerVisible}
+        onClose={closeProductDrawer}
+        onMakeItNow={() => {}}
+        onShare={handleShare}
+      />
     </View>
   );
 }
@@ -531,6 +694,152 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[900] },
   listWrap: { flex: 1 },
+  drawerBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  drawerBackdropDim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  drawerSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "80%",
+    paddingBottom: spacing[8],
+    overflow: "hidden",
+  },
+  drawerSheetBlurWrap: {
+    ...StyleSheet.absoluteFillObject,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  drawerSheetGlassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  drawerHandleWrap: {
+    alignItems: "center",
+    paddingVertical: spacing[3],
+    zIndex: 1,
+  },
+  drawerHandle: {
+    width: 48,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  drawerContent: {
+    paddingHorizontal: spacing[6],
+    zIndex: 1,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing[4],
+  },
+  drawerTitle: {
+    flex: 1,
+    fontSize: typography.fontSize["2xl"],
+    color: colors.gray[900],
+    fontFamily: typography.fontFamily.bold,
+  },
+  drawerCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
+  drawerPrice: {
+    fontSize: 28,
+    color: colors.primary[500],
+    fontFamily: typography.fontFamily.bold,
+    marginTop: spacing[2],
+  },
+  drawerPriceLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    fontFamily: typography.fontFamily.sans,
+    marginTop: 2,
+  },
+  drawerCreatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing[6],
+    paddingVertical: spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[200],
+    gap: spacing[3],
+  },
+  drawerCreatorAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  drawerCreatorAvatarPlaceholder: {
+    backgroundColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerCreatorInfo: { flex: 1 },
+  drawerCreatorName: {
+    fontSize: typography.fontSize.base,
+    color: colors.gray[900],
+    fontFamily: typography.fontFamily.medium,
+  },
+  drawerCreatorTitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    fontFamily: typography.fontFamily.sans,
+    marginTop: 2,
+  },
+  drawerMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing[4],
+  },
+  drawerMetaLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    fontFamily: typography.fontFamily.medium,
+  },
+  drawerMetaValue: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[900],
+    fontFamily: typography.fontFamily.sans,
+  },
+  drawerCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing[2],
+    backgroundColor: colors.primary[500],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
+    borderRadius: 12,
+    marginTop: spacing[6],
+  },
+  drawerCtaText: {
+    fontSize: typography.fontSize.lg,
+    color: "#FFFFFF",
+    fontFamily: typography.fontFamily.bold,
+  },
+  drawerShareBtn: {
+    alignSelf: "flex-end",
+    marginTop: spacing[3],
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
