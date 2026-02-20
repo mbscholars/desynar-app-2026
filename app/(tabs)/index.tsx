@@ -1,8 +1,10 @@
 import { UserLogin } from "@/components/UserLogin";
+import { colors, radius, shadows, spacing, typography } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
-import { colors, spacing, typography } from "@/constants/theme";
+import { useMeasurementProfiles } from "@/context/MeasurementProfilesContext";
 import type { WearResponse } from "@/services/api";
 import { ApiError, clothesApi } from "@/services/api";
+import { getRelationshipLabel } from "@/types/measurement";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   FlatList,
   Image,
@@ -126,7 +129,9 @@ function FeedCard({
   const [walkVideoUrl, setWalkVideoUrl] = useState<string | null>(null);
   const [walkLoading, setWalkLoading] = useState(false);
   const mediaScrollRef = useRef<ScrollView>(null);
-  const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{ time: number; x: number; y: number } | null>(
+    null,
+  );
   const didScrollRef = useRef(false);
 
   const TAP_MAX_DURATION_MS = 400;
@@ -148,7 +153,9 @@ function FeedCard({
   );
 
   const handleMediaTouchEnd = useCallback(
-    (e: { nativeEvent: { changedTouches: { pageX: number; pageY: number }[] } }) => {
+    (e: {
+      nativeEvent: { changedTouches: { pageX: number; pageY: number }[] };
+    }) => {
       const start = touchStartRef.current;
       if (!start) return;
       const ct = e.nativeEvent.changedTouches[0];
@@ -217,7 +224,7 @@ function FeedCard({
     try {
       const res = await clothesApi.getWalkVideo(item.id);
       const url = res?.data?.video_url ?? null;
-      console.log("url", res.data);
+
       if (!url) {
         Alert.alert(
           "AI not available",
@@ -419,9 +426,17 @@ function FeedCard({
             {item.outfitName}
           </Text>
         </View>
-        <View style={styles.avatar}>
-          <FontAwesome name="user" size={20} color={colors.primary[500]} />
-        </View>
+        {item.creatorAvatar ? (
+          <Image
+            source={{ uri: item.creatorAvatar }}
+            style={styles.avatar}
+            accessibilityLabel={item.creatorName}
+          />
+        ) : (
+          <View style={styles.avatar}>
+            <FontAwesome name="user" size={20} color={colors.primary[500]} />
+          </View>
+        )}
       </Pressable>
     </View>
   );
@@ -438,6 +453,19 @@ function formatPrice(
   return `${currency} ${(amount / 100).toLocaleString()}`;
 }
 
+/** Format ISO date as "Mon YYYY" (e.g. "Feb 2026") for profile cards. */
+function formatMonthYear(isoDate: string): string {
+  try {
+    const d = new Date(isoDate);
+    const month = d.toLocaleString("en-US", { month: "short" });
+    return `${month} ${d.getFullYear()}`;
+  } catch {
+    return "";
+  }
+}
+
+const DRAWER_SLIDE_DURATION = 250;
+
 function ProductDetailDrawer({
   item,
   visible,
@@ -448,22 +476,357 @@ function ProductDetailDrawer({
   item: FeedItem | null;
   visible: boolean;
   onClose: () => void;
-  onMakeItNow: (item: FeedItem) => void;
+  onMakeItNow: (item: FeedItem, selectedProfileIds: string[]) => void;
   onShare: (item: FeedItem) => void;
 }) {
   const router = useRouter();
-  if (!item) return null;
+  const insets = useSafeAreaInsets();
+  const {
+    profiles,
+    isLoading: profilesLoading,
+    refresh: refreshProfiles,
+  } = useMeasurementProfiles();
+  const [step, setStep] = useState<"product" | "profiles">("product");
+  const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const handleMakeItNow = () => {
+  // When product changes (e.g. new product opened), always show product view
+  useEffect(() => {
+    if (item) {
+      setStep("product");
+      setSelectedProfileIds(new Set());
+      slideAnim.setValue(0);
+    }
+  }, [item?.id]);
+
+  // When entering profiles step, refresh profiles and animate
+  useEffect(() => {
+    if (step === "profiles") {
+      refreshProfiles();
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: DRAWER_SLIDE_DURATION,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: DRAWER_SLIDE_DURATION,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [step]);
+
+  const goToProfiles = useCallback(() => setStep("profiles"), []);
+  const goBackToProduct = useCallback(() => setStep("product"), []);
+
+  const toggleProfile = useCallback((id: string) => {
+    setSelectedProfileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleContinueToOrder = useCallback(() => {
+    if (!item) return;
+    const ids = Array.from(selectedProfileIds);
+    onMakeItNow(item, ids);
     onClose();
-    onMakeItNow(item);
     router.push({
       pathname: "/(tabs)/orders",
-      params: { product: String(item.id) },
+      params: { product: String(item.id), profileIds: ids.join(",") },
     });
-  };
+  }, [item, selectedProfileIds, onMakeItNow, onClose]);
 
-  const handleShare = () => onShare(item);
+  const handleShare = useCallback(() => {
+    if (item) onShare(item);
+  }, [item, onShare]);
+
+  if (!item) return null;
+
+  const drawerContentWidth = SCREEN_WIDTH;
+  const translateX = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -drawerContentWidth],
+  });
+
+  const productPanel = (
+    <View style={[styles.drawerPanel, { width: drawerContentWidth }]}>
+      <View style={styles.drawerPanelContent}>
+        <View style={styles.drawerHeader}>
+          <Text style={styles.drawerTitle} numberOfLines={2}>
+            {item.outfitName}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={styles.drawerCloseBtn}
+            hitSlop={12}
+            accessibilityLabel="Close"
+          >
+            <FontAwesome name="times" size={18} color={colors.gray[700]} />
+          </Pressable>
+        </View>
+        <Text style={styles.drawerPrice}>
+          {formatPrice(item.price, item.currency)}
+        </Text>
+        <Text style={styles.drawerPriceLabel}>per piece</Text>
+
+        <View style={styles.drawerCreatorRow}>
+          {item.creatorAvatar ? (
+            <Image
+              source={{ uri: item.creatorAvatar }}
+              style={styles.drawerCreatorAvatar}
+            />
+          ) : (
+            <View
+              style={[
+                styles.drawerCreatorAvatar,
+                styles.drawerCreatorAvatarPlaceholder,
+              ]}
+            >
+              <FontAwesome name="user" size={20} color={colors.gray[500]} />
+            </View>
+          )}
+          <View style={styles.drawerCreatorInfo}>
+            <Text style={styles.drawerCreatorName}>{item.creatorName}</Text>
+            <Text style={styles.drawerCreatorTitle}>Designer</Text>
+          </View>
+        </View>
+
+        {item.category ? (
+          <View style={styles.drawerMetaRow}>
+            <Text style={styles.drawerMetaLabel}>Category</Text>
+            <Text style={styles.drawerMetaValue}>{item.category}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View
+        style={[
+          styles.drawerCtaRow,
+          { paddingBottom: Math.max(insets.bottom, spacing[4]) },
+        ]}
+      >
+        <Pressable
+          onPress={goToProfiles}
+          style={({ pressed }) => [
+            styles.drawerCta,
+            pressed && { opacity: 0.9 },
+          ]}
+          accessibilityLabel="Make it now"
+        >
+          <FontAwesome name="magic" size={18} color="#FFFFFF" />
+          <Text style={styles.drawerCtaText}>Make it now</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleShare}
+          style={({ pressed }) => [
+            styles.drawerShareBtn,
+            pressed && { opacity: 0.8 },
+          ]}
+          accessibilityLabel="Share"
+        >
+          <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const profilesPanel = (
+    <View style={[styles.drawerPanel, { width: drawerContentWidth }]}>
+      <View style={styles.drawerProfilesHeader}>
+        <Pressable
+          onPress={goBackToProduct}
+          style={styles.drawerBackBtn}
+          hitSlop={12}
+          accessibilityLabel="Back"
+        >
+          <FontAwesome name="arrow-left" size={20} color={colors.gray[700]} />
+        </Pressable>
+        <Text style={styles.drawerProfilesTitle}>Who is this for?</Text>
+        <View style={styles.drawerBackBtnPlaceholder} />
+      </View>
+
+      {profilesLoading ? (
+        <View style={styles.drawerProfilesLoading}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={styles.drawerProfilesLoadingText}>
+            Loading profiles…
+          </Text>
+        </View>
+      ) : profiles.length === 0 ? (
+        <View style={styles.drawerProfilesEmpty}>
+          <View style={styles.drawerProfilesEmptyIcon}>
+            <FontAwesome name="user" size={32} color={colors.gray[400]} />
+          </View>
+          <Text style={styles.drawerProfilesEmptyTitle}>
+            No measurement profiles
+          </Text>
+          <Text style={styles.drawerProfilesEmptyBody}>
+            Create a measurement profile so we can make this piece for you. You
+            only need to do it once.
+          </Text>
+          <Pressable
+            onPress={() => {
+              onClose();
+              router.push("/measurements");
+            }}
+            style={({ pressed }) => [
+              styles.drawerProfilesCreateBtn,
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <FontAwesome name="plus" size={18} color="#FFFFFF" />
+            <Text style={styles.drawerProfilesCreateBtnText}>
+              Create a profile
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            style={styles.drawerProfilesScroll}
+            contentContainerStyle={styles.drawerProfilesScrollContent}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View
+              style={{
+                height:
+                  ((drawerContentWidth - spacing[6] * 2 - spacing[2]) / 2) *
+                  (4 / 3),
+                minHeight: 120,
+              }}
+            >
+              <FlatList
+              data={profiles}
+              keyExtractor={(p) => p.id}
+              horizontal
+              showsHorizontalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.drawerProfilesGridContent,
+                { paddingLeft: 0, paddingRight: spacing[4] },
+              ]}
+              style={styles.drawerProfilesScrollHorizontal}
+              ItemSeparatorComponent={() => (
+                <View style={{ width: spacing[2] }} />
+              )}
+              renderItem={({ item: profile }) => {
+                const isSelected = selectedProfileIds.has(profile.id);
+                const thumbUri = profile.frontImageUri ?? null;
+                const relationshipLabel = getRelationshipLabel(
+                  profile.relationship,
+                  profile.relationshipCustom,
+                );
+                const monthYear = formatMonthYear(
+                  profile.updatedAt || profile.createdAt,
+                );
+                const subtitle =
+                  monthYear ? `${relationshipLabel} · ${monthYear}` : relationshipLabel;
+                const cardWidth =
+                  (drawerContentWidth - spacing[6] * 2 - spacing[2]) / 2;
+              return (
+                <Pressable
+                  onPress={() => toggleProfile(profile.id)}
+                  style={[
+                    styles.drawerProfileBlock,
+                    { width: cardWidth },
+                    isSelected && styles.drawerProfileBlockSelected,
+                  ]}
+                >
+                  <View style={styles.drawerProfileBlockThumb}>
+                    {thumbUri ? (
+                      <Image
+                        source={{ uri: thumbUri }}
+                        style={StyleSheet.absoluteFill}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <FontAwesome
+                        name="user"
+                        size={28}
+                        color={colors.gray[400]}
+                      />
+                    )}
+                    <LinearGradient
+                      colors={["rgba(0,0,0,0.75)", "transparent"]}
+                      style={styles.drawerProfileBlockOverlay}
+                    />
+                    <View style={styles.drawerProfileBlockCaption}>
+                      <Text
+                        style={styles.drawerProfileBlockName}
+                        numberOfLines={1}
+                      >
+                        {profile.name}
+                      </Text>
+                      <Text
+                        style={styles.drawerProfileBlockSubtitle}
+                        numberOfLines={1}
+                      >
+                        {subtitle}
+                      </Text>
+                    </View>
+                  </View>
+                  {isSelected ? (
+                    <View style={styles.drawerProfileBlockCheck}>
+                      <FontAwesome
+                        name="check"
+                        size={12}
+                        color={colors.primary[500]}
+                      />
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+              }}
+            />
+            </View>
+          </ScrollView>
+          <View
+            style={[
+              styles.drawerProfilesFooter,
+              { paddingBottom: Math.max(insets.bottom, spacing[4]) },
+            ]}
+          >
+            <View style={styles.drawerProfilesFooterRow}>
+              <Pressable
+                onPress={() => {
+                  if (selectedProfileIds.size === 0) return;
+                  // Add to cart – placeholder for cart action
+                }}
+                disabled={selectedProfileIds.size === 0}
+                style={({ pressed }) => [
+                  styles.drawerCtaSecondary,
+                  selectedProfileIds.size === 0 && styles.drawerCtaDisabled,
+                  pressed && selectedProfileIds.size > 0 && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.drawerCtaSecondaryText}>
+                  Add to Cart
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleContinueToOrder}
+                disabled={selectedProfileIds.size === 0}
+                style={({ pressed }) => [
+                  styles.drawerCta,
+                  selectedProfileIds.size === 0 && styles.drawerCtaDisabled,
+                  pressed && selectedProfileIds.size > 0 && { opacity: 0.9 },
+                ]}
+              >
+                <Text style={styles.drawerCtaText}>Check out Now</Text>
+              </Pressable>
+            </View>
+          </View>
+        </>
+      )}
+    </View>
+  );
 
   return (
     <Modal
@@ -488,78 +851,19 @@ function ProductDetailDrawer({
           <View style={styles.drawerHandleWrap}>
             <View style={styles.drawerHandle} />
           </View>
-          <View style={styles.drawerContent}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle} numberOfLines={2}>
-                {item.outfitName}
-              </Text>
-              <Pressable
-                onPress={onClose}
-                style={styles.drawerCloseBtn}
-                hitSlop={12}
-              >
-                <FontAwesome name="times" size={18} color={colors.gray[700]} />
-              </Pressable>
-            </View>
-            <Text style={styles.drawerPrice}>
-              {formatPrice(item.price, item.currency)}
-            </Text>
-            <Text style={styles.drawerPriceLabel}>per piece</Text>
-
-            <View style={styles.drawerCreatorRow}>
-              {item.creatorAvatar ? (
-                <Image
-                  source={{ uri: item.creatorAvatar }}
-                  style={styles.drawerCreatorAvatar}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.drawerCreatorAvatar,
-                    styles.drawerCreatorAvatarPlaceholder,
-                  ]}
-                >
-                  <FontAwesome name="user" size={20} color={colors.gray[500]} />
-                </View>
-              )}
-              <View style={styles.drawerCreatorInfo}>
-                <Text style={styles.drawerCreatorName}>{item.creatorName}</Text>
-                <Text style={styles.drawerCreatorTitle}>Designer</Text>
-              </View>
-            </View>
-
-            {item.category ? (
-              <View style={styles.drawerMetaRow}>
-                <Text style={styles.drawerMetaLabel}>Category</Text>
-                <Text style={styles.drawerMetaValue}>{item.category}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.drawerCtaRow}>
-              <Pressable
-                onPress={handleMakeItNow}
-                style={({ pressed }) => [
-                  styles.drawerCta,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <FontAwesome name="magic" size={18} color="#FFFFFF" />
-                <Text style={styles.drawerCtaText}>Make it now</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleShare}
-                style={({ pressed }) => [
-                  styles.drawerShareBtn,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                <FontAwesome
-                  name="share-alt"
-                  size={18}
-                  color={colors.gray[700]}
-                />
-              </Pressable>
-            </View>
+          <View style={styles.drawerContentWrap}>
+            <Animated.View
+              style={[
+                styles.drawerSlidingContent,
+                {
+                  width: drawerContentWidth * 2,
+                  transform: [{ translateX }],
+                },
+              ]}
+            >
+              {productPanel}
+              {profilesPanel}
+            </Animated.View>
           </View>
         </Pressable>
       </View>
@@ -720,89 +1024,89 @@ export default function HomeScreen() {
         </View>
       </Modal>
       <View style={styles.container}>
-      <LinearGradient
-        colors={["rgba(0,0,0,0.6)", "transparent"]}
-        style={[styles.topBar, { paddingTop: insets.top }]}
-      >
-        <View style={styles.topBarInner}>
-          <View style={styles.logoRow}>
-            <Image
-              source={require("../../assets/logos/desynar-white.png")}
-              style={styles.logoImage}
-              resizeMode="contain"
-              accessibilityLabel="Desynar"
-            />
-            <Text style={styles.logoCatalog}> catalog</Text>
-          </View>
-          <View style={styles.topBarRight}>
-            <Pressable
-              hitSlop={MIN_TAP}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <FontAwesome name="bell" size={22} color="#FFFFFF" />
-              {notificationCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {notificationCount > 9 ? "9+" : notificationCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-            <Pressable
-              hitSlop={MIN_TAP}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <FontAwesome name="search" size={22} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {feed.length === 0 ? (
-        <View style={[styles.centerContainer, styles.empty]}>
-          <Text style={styles.emptyText}>No fashion content found.</Text>
-        </View>
-      ) : (
-        <View style={styles.listWrap} onLayout={onListLayout}>
-          <FlatList
-            ref={listRef}
-            data={feed}
-            renderItem={renderItem}
-            keyExtractor={(item) => String(item.id)}
-            pagingEnabled
-            snapToAlignment="start"
-            snapToInterval={feedHeight}
-            decelerationRate="fast"
-            showsVerticalScrollIndicator={false}
-            getItemLayout={getItemLayout}
-            initialNumToRender={2}
-            maxToRenderPerBatch={2}
-            windowSize={3}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => fetchFeed(true)}
-                tintColor="#FFFFFF"
+        <LinearGradient
+          colors={["rgba(0,0,0,0.6)", "transparent"]}
+          style={[styles.topBar, { paddingTop: insets.top }]}
+        >
+          <View style={styles.topBarInner}>
+            <View style={styles.logoRow}>
+              <Image
+                source={require("../../assets/logos/desynar-white.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+                accessibilityLabel="Desynar"
               />
-            }
-          />
-        </View>
-      )}
+              <Text style={styles.logoCatalog}> catalog</Text>
+            </View>
+            <View style={styles.topBarRight}>
+              <Pressable
+                hitSlop={MIN_TAP}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <FontAwesome name="bell" size={22} color="#FFFFFF" />
+                {notificationCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {notificationCount > 9 ? "9+" : notificationCount}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                hitSlop={MIN_TAP}
+                style={({ pressed }) => [
+                  styles.iconBtn,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <FontAwesome name="search" size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          </View>
+        </LinearGradient>
 
-      <ProductDetailDrawer
-        item={selectedItem}
-        visible={drawerVisible}
-        onClose={closeProductDrawer}
-        onMakeItNow={() => {}}
-        onShare={handleShare}
-      />
-    </View>
+        {feed.length === 0 ? (
+          <View style={[styles.centerContainer, styles.empty]}>
+            <Text style={styles.emptyText}>No fashion content found.</Text>
+          </View>
+        ) : (
+          <View style={styles.listWrap} onLayout={onListLayout}>
+            <FlatList
+              ref={listRef}
+              data={feed}
+              renderItem={renderItem}
+              keyExtractor={(item) => String(item.id)}
+              pagingEnabled
+              snapToAlignment="start"
+              snapToInterval={feedHeight}
+              decelerationRate="fast"
+              showsVerticalScrollIndicator={false}
+              getItemLayout={getItemLayout}
+              initialNumToRender={2}
+              maxToRenderPerBatch={2}
+              windowSize={3}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => fetchFeed(true)}
+                  tintColor="#FFFFFF"
+                />
+              }
+            />
+          </View>
+        )}
+
+        <ProductDetailDrawer
+          item={selectedItem}
+          visible={drawerVisible}
+          onClose={closeProductDrawer}
+          onMakeItNow={(_item, _selectedProfileIds) => {}}
+          onShare={handleShare}
+        />
+      </View>
     </>
   );
 }
@@ -822,7 +1126,8 @@ const styles = StyleSheet.create({
   drawerSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: "80%",
+    height: "350",
+    maxHeight: "350",
     paddingBottom: spacing[8],
     overflow: "hidden",
   },
@@ -847,6 +1152,23 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  drawerContentWrap: {
+    flex: 1,
+    overflow: "hidden",
+    zIndex: 1,
+  },
+  drawerSlidingContent: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  drawerPanel: {
+    paddingHorizontal: spacing[6],
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  drawerPanelContent: {
+    flex: 1,
   },
   drawerContent: {
     paddingHorizontal: spacing[6],
@@ -935,18 +1257,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing[3],
-    marginTop: spacing[6],
+    paddingTop: spacing[4],
   },
   drawerCta: {
-    flex: 0.8,
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing[2],
-    backgroundColor: colors.primary[500],
     paddingVertical: spacing[4],
-    paddingHorizontal: spacing[6],
+    paddingHorizontal: spacing[4],
     borderRadius: 12,
+    backgroundColor: colors.primary[500],
   },
   drawerCtaText: {
     fontSize: typography.fontSize.lg,
@@ -961,6 +1282,186 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.6)",
+  },
+  drawerCtaDisabled: {
+    opacity: 0.5,
+  },
+  drawerProfilesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing[4],
+  },
+  drawerBackBtn: {
+    minWidth: MIN_TAP,
+    minHeight: MIN_TAP,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerBackBtnPlaceholder: {
+    width: MIN_TAP,
+    height: MIN_TAP,
+  },
+  drawerProfilesTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.semibold,
+    color: colors.gray[900],
+  },
+  drawerProfilesLoading: {
+    paddingVertical: spacing[16],
+    alignItems: "center",
+    gap: spacing[3],
+  },
+  drawerProfilesLoadingText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    fontFamily: typography.fontFamily.sans,
+  },
+  drawerProfilesEmpty: {
+    paddingVertical: spacing[8],
+    alignItems: "center",
+    paddingHorizontal: spacing[4],
+  },
+  drawerProfilesEmptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[4],
+  },
+  drawerProfilesEmptyTitle: {
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.semibold,
+    color: colors.gray[900],
+    marginBottom: spacing[2],
+    textAlign: "center",
+  },
+  drawerProfilesEmptyBody: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[500],
+    fontFamily: typography.fontFamily.sans,
+    textAlign: "center",
+    marginBottom: spacing[6],
+    paddingHorizontal: spacing[2],
+  },
+  drawerProfilesCreateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing[2],
+    backgroundColor: colors.primary[500],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
+    borderRadius: 16,
+    minHeight: MIN_TAP,
+  },
+  drawerProfilesCreateBtnText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: "#FFFFFF",
+  },
+  drawerProfilesScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  drawerProfilesScrollContent: {
+    paddingBottom: spacing[2],
+  },
+  drawerProfilesScrollHorizontal: {
+    flex: 1,
+    height: "100%",
+  },
+  drawerProfilesGridRow: {
+    flexDirection: "row",
+    gap: spacing[2],
+    marginBottom: spacing[2],
+    paddingHorizontal: spacing[2],
+  },
+  drawerProfilesGridContent: {
+    paddingBottom: spacing[3],
+  },
+  drawerProfileBlock: {
+    borderRadius: radius.xl,
+    overflow: "hidden",
+    ...shadows.soft,
+    backgroundColor: colors.gray[50],
+  },
+  drawerProfileBlockSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary[500],
+  },
+  drawerProfileBlockThumb: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    backgroundColor: colors.gray[200],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerProfileBlockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-start",
+  },
+  drawerProfileBlockCaption: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    padding: spacing[2],
+    paddingBottom: spacing[4],
+  },
+  drawerProfileBlockName: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semibold,
+    color: "#FFFFFF",
+  },
+  drawerProfileBlockSubtitle: {
+    fontSize: typography.fontSize.xs,
+    color: "rgba(255,255,255,0.9)",
+    fontFamily: typography.fontFamily.sans,
+    marginTop: 2,
+  },
+  drawerProfileBlockCheck: {
+    position: "absolute",
+    top: spacing[2],
+    right: spacing[2],
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.primary[500],
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerProfilesFooter: {
+    paddingTop: spacing[4],
+    paddingHorizontal: 0,
+  },
+  drawerProfilesFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[3],
+  },
+  drawerCtaSecondary: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[4],
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.primary[500],
+    backgroundColor: "transparent",
+  },
+  drawerCtaSecondaryText: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary[500],
+    fontFamily: typography.fontFamily.semibold,
   },
   centerContainer: {
     flex: 1,

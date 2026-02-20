@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
 import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextInputProps,
-  View,
-} from 'react-native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { atelier, colors, radius, spacing, typography } from '@/constants/theme';
+    atelier,
+    colors,
+    radius,
+    spacing,
+    typography,
+} from "@/constants/theme";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import React, { useState } from "react";
+import {
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextInputProps,
+    View,
+} from "react-native";
 
 const MIN_TOUCH = 44;
 
@@ -18,7 +24,7 @@ type InputProps = TextInputProps & {
   error?: string;
   containerStyle?: object;
   /** Use "dark" on dark/atelier backgrounds for reduced contrast. */
-  variant?: 'default' | 'dark';
+  variant?: "default" | "dark";
 };
 
 export function Input({
@@ -26,7 +32,7 @@ export function Input({
   required,
   error,
   containerStyle,
-  variant = 'default',
+  variant = "default",
   secureTextEntry,
   ...rest
 }: InputProps) {
@@ -34,12 +40,14 @@ export function Input({
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = secureTextEntry === true;
   const showValue = isPassword && !showPassword;
-  const isDark = variant === 'dark';
+  const isDark = variant === "dark";
 
   const borderColor = error
     ? colors.danger[500]
     : isFocused
-      ? (isDark ? atelier.accent : colors.primary[500])
+      ? isDark
+        ? atelier.accent
+        : colors.primary[500]
       : isDark
         ? atelier.divider
         : colors.gray[300];
@@ -80,7 +88,7 @@ export function Input({
             style={styles.eyeWrap}
           >
             <FontAwesome
-              name={showPassword ? 'eye-slash' : 'eye'}
+              name={showPassword ? "eye-slash" : "eye"}
               size={20}
               color={eyeColor}
             />
@@ -110,22 +118,22 @@ const styles = StyleSheet.create({
   },
   asterisk: { color: colors.danger[500] },
   inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: MIN_TOUCH,
     paddingHorizontal: spacing[4],
     borderWidth: 1,
     borderRadius: radius.lg,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   inputWrapDark: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: MIN_TOUCH,
     paddingHorizontal: spacing[4],
     borderWidth: 1,
     borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   input: {
     flex: 1,
@@ -144,8 +152,8 @@ const styles = StyleSheet.create({
   eyeWrap: {
     minWidth: MIN_TOUCH,
     minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorText: {
     fontSize: typography.fontSize.xs,

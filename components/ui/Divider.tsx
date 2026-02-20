@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View, ViewStyle, TextStyle } from 'react-native';
-import { colors, spacing, typography } from '@/constants/theme';
+import { colors, spacing, typography } from "@/constants/theme";
+import React from "react";
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from "react-native";
 
 type DividerProps = {
   text?: string;
@@ -9,7 +9,12 @@ type DividerProps = {
   textStyle?: TextStyle;
 };
 
-export function Divider({ text = 'or', containerStyle, lineStyle, textStyle }: DividerProps) {
+export function Divider({
+  text = "or",
+  containerStyle,
+  lineStyle,
+  textStyle,
+}: DividerProps) {
   return (
     <View style={[styles.wrap, containerStyle]}>
       <View style={[styles.line, lineStyle]} />
@@ -21,8 +26,8 @@ export function Divider({ text = 'or', containerStyle, lineStyle, textStyle }: D
 
 const styles = StyleSheet.create({
   wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: spacing[4],
     gap: spacing[3],
   },

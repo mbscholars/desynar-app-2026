@@ -1,8 +1,8 @@
-import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { useAuth } from '@/context/AuthContext';
-import { colors } from '@/constants/theme';
+import { colors } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 /**
  * Root gate: on app open, check auth via /session.
@@ -15,7 +15,7 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (!isLoading) {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }, [isLoading, router]);
 
@@ -37,8 +37,8 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: colors.gray[50],
   },
 });

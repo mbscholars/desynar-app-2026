@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { getToken, removeToken, setToken } from '@/services/authStorage';
+import { getToken, removeToken, setToken } from "@/services/authStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-const GUEST_AUTH_KEY = 'desynar_auth_guest';
+const GUEST_AUTH_KEY = "desynar_auth_guest";
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -21,27 +27,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setAuthenticatedState] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // For now: no session check — always show as not authenticated so we can work on the login screen.
+  // Restore session from stored token so orders/API work after app restart.
   useEffect(() => {
-    setAuthenticatedState(false);
+    let cancelled = false;
+    getToken()
+      .then((token) => {
+        if (!cancelled && token) setAuthenticatedState(true);
+      })
+      .catch(() => {});
     setIsLoading(false);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setAuthenticated = useCallback((value: boolean) => {
     setAuthenticatedState(value);
-    AsyncStorage.setItem(GUEST_AUTH_KEY, value ? 'true' : 'false').catch(() => {});
+    AsyncStorage.setItem(GUEST_AUTH_KEY, value ? "true" : "false").catch(
+      () => {},
+    );
   }, []);
 
   const login = useCallback(async (token?: string) => {
     if (token) await setToken(token);
     setAuthenticatedState(true);
-    await AsyncStorage.setItem(GUEST_AUTH_KEY, 'true').catch(() => {});
+    await AsyncStorage.setItem(GUEST_AUTH_KEY, "true").catch(() => {});
   }, []);
 
   const logout = useCallback(async () => {
     await removeToken();
     setAuthenticatedState(false);
-    await AsyncStorage.setItem(GUEST_AUTH_KEY, 'false').catch(() => {});
+    await AsyncStorage.setItem(GUEST_AUTH_KEY, "false").catch(() => {});
   }, []);
 
   const value: AuthContextValue = {
@@ -57,6 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

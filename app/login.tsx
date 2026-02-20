@@ -1,8 +1,8 @@
-import { UserLogin } from '@/components/UserLogin';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { UserLogin } from "@/components/UserLogin";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
+import { useCallback } from "react";
+import { StyleSheet, View } from "react-native";
 
 /**
  * Login route — uses the shared UserLogin component (atelier design).
@@ -14,11 +14,11 @@ export default function LoginScreen() {
 
   const handleClose = useCallback(() => {
     setAuthenticated(true);
-    router.replace('/(tabs)');
+    router.replace("/(tabs)");
   }, [router, setAuthenticated]);
 
   const handleSuccess = useCallback(() => {
-    router.replace('/(tabs)');
+    router.replace("/(tabs)");
   }, [router]);
 
   return (

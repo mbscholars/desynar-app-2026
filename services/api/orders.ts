@@ -1,7 +1,7 @@
-import { api } from './client';
-import type { OrdersListResponse } from './types';
+import { api } from "./client";
+import type { OrderSingleResponse, OrdersListResponse } from "./types";
 
-const BASE = '/api/v1/orders';
+const BASE = "/api/v1/orders";
 
 export interface GetOrdersParams {
   page?: number;
@@ -13,20 +13,22 @@ export const ordersApi = {
   /** List orders for current user. Requires auth. */
   getList: (params?: GetOrdersParams) => {
     const search = new URLSearchParams();
-    if (params?.page != null) search.set('page', String(params.page));
-    if (params?.per_page != null) search.set('per_page', String(params.per_page));
-    if (params?.status) search.set('status', params.status);
+    if (params?.page != null) search.set("page", String(params.page));
+    if (params?.per_page != null)
+      search.set("per_page", String(params.per_page));
+    if (params?.status) search.set("status", params.status);
     const qs = search.toString();
     return api.get<OrdersListResponse>(qs ? `${BASE}?${qs}` : BASE);
   },
 
-  /** Single order by reference. Requires auth. */
+  /** Single order by reference. Requires auth. Returns order + optional chat. */
   getByReference: (reference: string) =>
-    api.get<{ success: boolean; data: import('./types').Order }>(
-      `${BASE}/${encodeURIComponent(reference)}`
-    ),
+    api.get<OrderSingleResponse>(`${BASE}/${encodeURIComponent(reference)}`),
 
   /** Cancel order. Requires auth. */
   cancel: (orderId: number, body?: { reason?: string }) =>
-    api.post<{ success: boolean; message: string }>(`${BASE}/${orderId}/cancel`, body),
+    api.post<{ success: boolean; message: string }>(
+      `${BASE}/${orderId}/cancel`,
+      body,
+    ),
 };

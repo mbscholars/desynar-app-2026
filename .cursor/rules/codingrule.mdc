@@ -1,0 +1,249 @@
+# DESYNAR DESIGN SYSTEM
+
+### (Atelier Principles → Practical Rules)
+
+---
+
+# 1️⃣ Design Philosophy Rule
+
+**Principle:** Craft over clutter.
+
+**Rule:**
+
+- Every screen must have a single primary action.
+- Maximum 3 visual focal points per screen.
+- No decorative UI elements without functional purpose.
+
+If it does not serve clarity or brand elevation → remove it.
+
+---
+
+# 2️⃣ Layout System Rules
+
+### Spacing Grid
+
+Use a strict 8pt spacing system:
+
+- 8 / 16 / 24 / 32 / 48 / 64
+- No random margins.
+- No uneven paddings.
+
+### Vertical Rhythm
+
+- Headline → 24–32px spacing
+- Section → 48–64px separation
+- Button stack spacing → 16–24px
+
+Luxury = breathing room.
+
+---
+
+# 3️⃣ Typography System
+
+## Font Pairing Structure
+
+**Primary Display (Emotional)**
+
+- Use metropolis font headings
+- Used only for:
+  - Taglines
+  - Hero headlines
+  - Editorial moments
+
+**UI Font (Functional)**
+
+- Use appropriate metropolis font weight
+- Used for:
+  - Buttons
+  - Labels
+  - Inputs
+  - Navigation
+
+---
+
+## Typography Hierarchy
+
+| Level | Use Case         | Weight           | Purpose          |
+| ----- | ---------------- | ---------------- | ---------------- |
+| H1    | Editorial hero   | Medium / Regular | Emotional anchor |
+| H2    | Section titles   | Medium           | Structure        |
+| Body  | Descriptions     | Regular          | Readability      |
+| Label | Inputs / Buttons | Medium           | Clarity          |
+
+No ultra-bold unless for CTA.
+
+---
+
+# 4️⃣ Color System Rules
+
+## Core Palette (Dark Luxury Mode)
+
+Primary Background:
+Use primary 500 variant
+
+Surface Panel:
+Use secondary 100 variant
+
+Primary Text:
+Use primary 500
+
+Muted Text:
+`#A1A1A1`
+
+Accent (Gold):
+`#C6A75E`
+
+---
+
+## Rules
+
+- Accent color only used for:
+  - Active states
+  - Highlights
+  - Micro indicators
+
+- Never use more than 1 accent color per screen.
+- Avoid high-saturation colors.
+
+Luxury = controlled palette.
+
+---
+
+# 5️⃣ Surface & Depth Rules
+
+### Panels
+
+- Border radius: 20–28px
+- Soft shadow only (no hard shadows)
+- Subtle elevation difference between background and panel
+
+### Glass Effects
+
+- Backdrop blur max 20px
+- Opacity between 70–85%
+- No heavy frosted gimmicks
+
+Depth must be subtle, not trendy.
+
+---
+
+# 6️⃣ Button System
+
+### Primary Button
+
+- High contrast fill
+- Full width on mobile
+- Height: 48–56px
+- Radius: 16–20px
+- Slight press animation (scale 0.97)
+
+### Secondary Button
+
+- Outline style
+- Same height
+- No heavy borders (1px max)
+
+### Rules
+
+- One primary CTA per screen.
+- No double-primary buttons.
+
+---
+
+# 7️⃣ Motion System
+
+Luxury motion is restrained.
+
+### Timing
+
+- 200–300ms
+- Ease-in-out
+
+### Animations
+
+- Fade
+- Slide (subtle)
+- Scale (micro press only)
+
+No bounce.
+No overshoot.
+No playful spring.
+
+---
+
+# 8️⃣ Imagery Rules
+
+If background imagery is used:
+
+- Must relate to tailoring, craftsmanship, or fabric.
+- Slightly desaturated.
+- Dark overlay for readability.
+- Never busy or colorful.
+
+Imagery supports atmosphere, not distraction.
+
+---
+
+# 9️⃣ Content Tone Rules
+
+Replace generic SaaS language.
+
+Avoid:
+
+- “Welcome back”
+- “Get started”
+- “Continue”
+
+Prefer:
+
+- “Enter”
+- “Continue with Google”
+- “Create your account”
+- “Curated tailoring.”
+
+Language should feel intentional and curated.
+
+---
+
+# 🔟 Component Constraints
+
+To maintain atelier discipline:
+
+- Max 5 components per screen section.
+- No more than 2 font sizes per section.
+- No more than 3 colors per section.
+
+Constraint builds identity.
+
+---
+
+# 11️⃣ Accessibility Rule (Enterprise Requirement)
+
+Luxury does not excuse poor usability.
+
+- Minimum contrast ratio: 4.5:1
+- Tap targets: minimum 44px height
+- Focus states visible
+- Motion can be reduced (respect OS settings)
+
+---
+
+# What This Achieves for Desynar
+
+It ensures:
+
+- Every screen feels curated.
+- Brand identity remains consistent.
+- Developers have fixed rules.
+- Design decisions become repeatable.
+- The UI feels intentional, not assembled.
+
+---
+
+# Summary
+
+Atelier → Craft → Restraint → Structure → System.
+
+When translated properly:
+
+It becomes a disciplined, premium design language — not just a visual mood.

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 
 const MIN_HEIGHT = 48;
@@ -15,6 +15,8 @@ type ButtonProps = {
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
   style?: ViewStyle;
+  /** Optional override for text color (e.g. light text on dark backgrounds). */
+  textStyle?: TextStyle;
 };
 
 export function Button({
@@ -25,6 +27,7 @@ export function Button({
   fullWidth,
   leftIcon,
   style,
+  textStyle,
 }: ButtonProps) {
   const isOutline = variant === 'outline' || variant === 'ghost';
   const isGhost = variant === 'ghost';
@@ -68,6 +71,7 @@ export function Button({
         style={[
           styles.text,
           { color: disabled && !isOutline ? colors.gray[500] : textColor },
+          textStyle,
         ]}
       >
         {title}

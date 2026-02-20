@@ -1,15 +1,14 @@
+import { AddActionPopover } from "@/components/AddActionPopover";
 import { useColorScheme } from "@/components/useColorScheme";
 import Colors from "@/constants/Colors";
 import { colors, typography } from "@/constants/theme";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Tabs } from "expo-router";
-import React from "react";
-import type { GestureResponderEvent } from "react-native";
+import { Tabs, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 const TAB_BAR_HEIGHT = 80;
 const ADD_BUTTON_SIZE = 56;
-const MIN_TAP = 44;
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
@@ -19,20 +18,29 @@ function TabBarIcon(props: {
 }
 
 function AddTabButton({
-  onPress,
+  isPopoverOpen,
+  onToggle,
 }: {
-  onPress: (e: GestureResponderEvent) => void;
+  isPopoverOpen: boolean;
+  onToggle: () => void;
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={onToggle}
       style={({ pressed }) => [
         styles.addButton,
         pressed && styles.addButtonPressed,
       ]}
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      accessibilityRole="button"
+      accessibilityLabel={isPopoverOpen ? "Close add menu" : "Open add menu"}
+      accessibilityState={{ expanded: isPopoverOpen }}
     >
-      <FontAwesome name="plus" size={28} color={colors.primary[900]} />
+      <FontAwesome
+        name={isPopoverOpen ? "times" : "plus"}
+        size={28}
+        color={colors.primary[900]}
+      />
     </Pressable>
   );
 }
@@ -40,69 +48,96 @@ function AddTabButton({
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? "light"];
+  const router = useRouter();
+  const [addPopoverOpen, setAddPopoverOpen] = useState(false);
+
+  const toggleAddPopover = useCallback(() => {
+    setAddPopoverOpen((v) => !v);
+  }, []);
+
+  const closeAddPopover = useCallback(() => {
+    setAddPopoverOpen(false);
+  }, []);
+
+  const handleManageMeasurements = useCallback(() => {
+    setAddPopoverOpen(false);
+    router.push("/measurements");
+  }, [router]);
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: themeColors.tabIconDefault,
-        tabBarStyle: {
-          backgroundColor: colors.gray[900],
-          borderTopColor: "transparent",
-          height: TAB_BAR_HEIGHT,
-        },
-        tabBarLabelStyle: {
-          fontSize: typography.fontSize.xs,
-          fontFamily: typography.fontFamily.sans,
-        },
-        headerShown: false,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
-        }}
+    <>
+      <AddActionPopover
+        visible={addPopoverOpen}
+        onClose={closeAddPopover}
+        onUploadDesign={() => {}}
+        onManageMeasurements={handleManageMeasurements}
+        onCreateWithAi={() => {}}
       />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: "Orders",
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="shopping-cart" color={color} />
-          ),
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#FFFFFF",
+          tabBarInactiveTintColor: themeColors.tabIconDefault,
+          tabBarStyle: {
+            backgroundColor: colors.gray[900],
+            borderTopColor: "transparent",
+            height: TAB_BAR_HEIGHT,
+          },
+          tabBarLabelStyle: {
+            fontSize: typography.fontSize.xs,
+            fontFamily: typography.fontFamily.sans,
+          },
+          headerShown: false,
         }}
-      />
-      <Tabs.Screen
-        name="add"
-        options={{
-          title: "",
-          tabBarIcon: () => null,
-          tabBarButton: (props) => (
-            <View style={styles.addWrap}>
-              <AddTabButton onPress={(e) => props.onPress?.(e)} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: "Inbox",
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="comment" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="account"
-        options={{
-          title: "Account",
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            title: "Orders",
+            tabBarIcon: ({ color }) => (
+              <TabBarIcon name="shopping-cart" color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="add"
+          options={{
+            title: "",
+            tabBarIcon: () => null,
+            tabBarButton: () => (
+              <View style={styles.addWrap}>
+                <AddTabButton
+                  isPopoverOpen={addPopoverOpen}
+                  onToggle={toggleAddPopover}
+                />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="inbox"
+          options={{
+            title: "Inbox",
+            tabBarIcon: ({ color }) => (
+              <TabBarIcon name="comment" color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="account"
+          options={{
+            title: "Account",
+            tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          }}
+        />
+      </Tabs>
+    </>
   );
 }
 
