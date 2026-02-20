@@ -276,6 +276,15 @@ function FeedCard({
         {mediaContent}
       </View>
 
+      {/* Right-edge vignette so action buttons (Wear, 360°, Like, Share) stay visible on light media. */}
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.12)", "rgba(0,0,0,0.4)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.vignetteRight}
+        pointerEvents="none"
+      />
+
       {hasMultipleMedia && (
         <View style={styles.dotsContainer} pointerEvents="box-none">
           <View style={styles.dotsRow}>
@@ -457,25 +466,27 @@ function ProductDetailDrawer({
               </View>
             ) : null}
 
-            <Pressable
-              onPress={handleMakeItNow}
-              style={({ pressed }) => [
-                styles.drawerCta,
-                pressed && { opacity: 0.9 },
-              ]}
-            >
-              <FontAwesome name="magic" size={18} color="#FFFFFF" />
-              <Text style={styles.drawerCtaText}>Make it now</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleShare}
-              style={({ pressed }) => [
-                styles.drawerShareBtn,
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
-            </Pressable>
+            <View style={styles.drawerCtaRow}>
+              <Pressable
+                onPress={handleMakeItNow}
+                style={({ pressed }) => [
+                  styles.drawerCta,
+                  pressed && { opacity: 0.9 },
+                ]}
+              >
+                <FontAwesome name="magic" size={18} color="#FFFFFF" />
+                <Text style={styles.drawerCtaText}>Make it now</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleShare}
+                style={({ pressed }) => [
+                  styles.drawerShareBtn,
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
+              </Pressable>
+            </View>
           </View>
         </Pressable>
       </View>
@@ -814,7 +825,14 @@ const styles = StyleSheet.create({
     color: colors.gray[900],
     fontFamily: typography.fontFamily.sans,
   },
+  drawerCtaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[3],
+    marginTop: spacing[6],
+  },
   drawerCta: {
+    flex: 0.8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -823,7 +841,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
     borderRadius: 12,
-    marginTop: spacing[6],
   },
   drawerCtaText: {
     fontSize: typography.fontSize.lg,
@@ -831,11 +848,10 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
   },
   drawerShareBtn: {
-    alignSelf: "flex-end",
-    marginTop: spacing[3],
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    flex: 0.2,
+    aspectRatio: 1,
+    maxHeight: 56,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.6)",
@@ -968,12 +984,21 @@ const styles = StyleSheet.create({
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
   },
+  vignetteRight: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 120,
+    zIndex: 1,
+  },
   actionsColumn: {
     position: "absolute",
     right: spacing[4],
     bottom: 100,
     alignItems: "center",
     gap: spacing[4],
+    zIndex: 2,
   },
   actionBtn: {
     alignItems: "center",
