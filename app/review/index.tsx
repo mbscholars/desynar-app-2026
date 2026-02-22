@@ -32,6 +32,13 @@ const MIN_TAP = 44;
 /** Fixed holding fee in minor units (formatPrice divides by 100). Display: NGN 2,000. */
 const HOLDING_FEE_MINOR = 200000;
 
+/** Display image: accepted customization/try-on or product image. */
+function getCartItemImageUri(item: CartItem): string {
+  return (
+    item.customization?.acceptedCustomizedImageUrl ?? item.product.imageUri
+  );
+}
+
 export default function ReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -48,8 +55,8 @@ export default function ReviewScreen() {
   }, [router]);
 
   const onProceed = useCallback(() => {
-    // Placeholder: later navigate to checkout or order confirmation
-  }, []);
+    (router.push as (href: string) => void)("/checkout");
+  }, [router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -63,7 +70,6 @@ export default function ReviewScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Cart items */}
         {items.length === 0 ? (
           <View style={styles.empty}>
             <FontAwesome name="shopping-cart" size={48} color={atelier.muted} />
@@ -79,6 +85,8 @@ export default function ReviewScreen() {
                 key={item.lineId}
                 item={item}
                 cardWidth={cardWidth}
+                imageUri={getCartItemImageUri(item)}
+                onPress={() => router.push(`/review/${item.lineId}`)}
                 onQuantityChange={(q) => updateQuantity(item.lineId, q)}
                 onRemove={() => removeItem(item.lineId)}
               />
@@ -87,7 +95,6 @@ export default function ReviewScreen() {
         )}
       </ScrollView>
 
-      {/* Sticky bottom CTA */}
       {items.length > 0 && (
         <View
           style={[
@@ -99,9 +106,12 @@ export default function ReviewScreen() {
           ]}
         >
           <View style={styles.ctaRow}>
-            <Text style={styles.ctaTotal}>
-              {formatPrice(HOLDING_FEE_MINOR, currency)}
-            </Text>
+            <View>
+              <Text style={styles.ctaTotal}>
+                {formatPrice(HOLDING_FEE_MINOR, currency)}
+              </Text>
+              <Text style={styles.ctaHoldingFeeLabel}>Holding fee</Text>
+            </View>
             <Pressable
               onPress={onProceed}
               style={({ pressed }) => [
@@ -123,18 +133,23 @@ export default function ReviewScreen() {
 function CartCard({
   item,
   cardWidth,
+  imageUri,
+  onPress,
   onQuantityChange,
   onRemove,
 }: {
   item: CartItem;
   cardWidth: number;
+  imageUri: string;
+  onPress: () => void;
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
 }) {
-  const { product, quantity, selectedProfileNames } = item;
+  const { product, quantity, selectedProfiles } = item;
   const lineTotal = (product.price ?? 0) * quantity;
-  const profileLabel =
-    selectedProfileNames?.length ? selectedProfileNames.join(", ") : "—";
+  const profileLabel = selectedProfiles?.length
+    ? selectedProfiles.map((p) => p.name).join(", ")
+    : "—";
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
@@ -149,24 +164,31 @@ function CartCard({
       >
         <FontAwesome name="trash-o" size={16} color={atelier.cta} />
       </Pressable>
-      <View style={styles.cardImageWrap}>
-        <Image
-          source={{ uri: product.imageUri }}
-          style={StyleSheet.absoluteFillObject}
-          resizeMode="cover"
-        />
-      </View>
-      <View style={styles.cardTextBackdrop}>
-        <Text style={styles.cardName} numberOfLines={2}>
-          {product.outfitName}
-        </Text>
-        <Text style={styles.cardProfiles} numberOfLines={1}>
-          {profileLabel}
-        </Text>
-        <Text style={styles.cardPrice}>
-          {formatPrice(lineTotal, product.currency)}
-        </Text>
-      </View>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [pressed && styles.cardPressablePressed]}
+        accessibilityRole="button"
+        accessibilityLabel="View item details"
+      >
+        <View style={styles.cardImageWrap}>
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+        </View>
+        <View style={styles.cardTextBackdrop}>
+          <Text style={styles.cardName} numberOfLines={2}>
+            {product.outfitName}
+          </Text>
+          <Text style={styles.cardProfiles} numberOfLines={1}>
+            {profileLabel}
+          </Text>
+          <Text style={styles.cardPrice}>
+            {formatPrice(lineTotal, product.currency)}
+          </Text>
+        </View>
+      </Pressable>
       <View style={styles.cardQuantityWrap}>
         <View style={styles.quantityRow}>
           <Pressable
@@ -231,6 +253,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   cartGrid: {
+    width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: GRID_GAP,
@@ -254,6 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardDeleteBtnPressed: { opacity: 0.7 },
+  cardPressablePressed: { opacity: 0.9 },
   cardImageWrap: {
     aspectRatio: 1 / CARD_ASPECT,
     overflow: "hidden",
@@ -339,6 +363,12 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xl,
     fontFamily: typography.fontFamily.semibold,
     color: atelier.cta,
+  },
+  ctaHoldingFeeLabel: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.sans,
+    color: atelier.muted,
+    marginTop: spacing[1],
   },
   ctaButton: {
     minHeight: CTA_BUTTON_HEIGHT,

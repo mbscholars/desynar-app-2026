@@ -254,3 +254,30 @@ The sheet uses a 92% snap point, supports **pan-down-to-close**, and uses `Botto
 | 7    | Confirm       | Phone (if needed), success              | Done                    |
 
 This describes the **logic, aim, and feel** of the customer order create flow for product-level documentation and implementation parity.
+
+---
+
+## 14. Mobile cart item details (review/[lineId])
+
+**Aim:** From the cart review grid, tapping a card (not delete or ±) opens the **item details** screen so the user can add instructions, customize with AI, and try on.
+
+**Entry:** `app/review/index.tsx` shows a grid of cart cards. The card body (image + text backdrop) is a `Pressable` that navigates to `/review/[lineId]`. Delete and quantity ± do not trigger navigation.
+
+**Item details screen** (`app/review/[lineId].tsx`):
+
+1. **Large image** — Hero image at top: `customization.acceptedCustomizedImageUrl ?? product.imageUri` (so try-on or AI-accepted image is shown when set).
+
+2. **Add instructions**
+   - Text input (multiline) for tailor instructions; saved on blur and when leaving the screen.
+   - Microphone button: placeholder for voice input (“Voice input coming soon” alert). Future: record and upload voice note, show transcript (align with web `voiceNoteUrl` / `voiceTranscript`).
+
+3. **Customize with AI**
+   - Single prompt input; “add and edit” supported via state. Backend AI-edit integration is left for later; structure matches web `aiRevisions` and `acceptedCustomizedImageUrl`.
+
+4. **Try on**
+   - List of **selected profiles** for this cart line (from `item.selectedProfileIds` / `selectedProfileNames`); user picks one.
+   - “Generate try-on” calls `tryOnGenerate(model_image, garment_image)` (see `services/api/tryon.ts`). Garment = current display image (product or accepted customized). Model = profile’s `frontImageUri` (from MeasurementProfilesContext).
+   - Progress text and loading state; on success, show try-on preview(s) with prev/next if `num_samples > 1`.
+   - **“Looks good”** → set `acceptedCustomizedImageUrl` and `product.imageUri` to the selected try-on image, merge current `customization` (including instructions), then `router.back()`. Cart list and card then show the try-on image (same structure as web OrderingFlow “confirm try-on” → cart item’s accepted image).
+
+**Customization structure (cart):** `CartItem.customization` holds `textInstructions`, `voiceNoteUrl`, `voiceTranscript`, `aiRevisions`, `acceptedCustomizedImageUrl`. When try-on is accepted, that image is stored in `acceptedCustomizedImageUrl` and in `product.imageUri` so the cart display updates. Aligns with web `customizations` payload (`text_instructions`, `voice_note_url`, `voice_transcript`, `ai_revisions`, `accepted_customized_image_url`).

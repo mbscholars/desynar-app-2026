@@ -1,4 +1,5 @@
 import {
+  animation,
   atelier,
   colors,
   radius,
@@ -22,17 +23,24 @@ import {
   Alert,
   FlatList,
   Image,
+  LayoutAnimation,
   Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ITEMS_PER_PAGE = 10;
+
+if (UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const ACTIVE_STATUSES = [
   "pending",
   "accepted",
@@ -187,20 +195,6 @@ function OrderCard({
           >
             <Text style={styles.cardActionLabel}>Contact</Text>
           </Pressable>
-          {isDraftStatus && onContinue && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onContinue();
-              }}
-              style={({ pressed }) => [
-                styles.cardActionBtn,
-                pressed && styles.cardActionPressed,
-              ]}
-            >
-              <Text style={styles.cardActionLabelSecondary}>Resume</Text>
-            </Pressable>
-          )}
           {isDraftStatus && onDelete && (
             <Pressable
               onPress={(e) => {
@@ -254,7 +248,8 @@ export default function OrdersScreen() {
   const [selectedFilter, setSelectedFilter] = useState<
     "all" | "draft" | "active" | "completed" | "cancelled"
   >("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const getFilterCount = useCallback(
     (filterValue: string): number => {
@@ -286,8 +281,8 @@ export default function OrdersScreen() {
       setError(null);
       try {
         const res = await ordersApi.getList({ per_page: 100 });
-        if (__DEV__)
-          console.debug("[Orders] getList response:", JSON.stringify(res));
+        // if (__DEV__)
+        //   console.debug("[Orders] getList response:", JSON.stringify(res));
         const raw = res.data;
         const list = Array.isArray(raw)
           ? raw
@@ -371,10 +366,6 @@ export default function OrdersScreen() {
     return list;
   }, [orders, selectedFilter, sortBy]);
 
-  const draftOrders = useMemo(
-    () => filteredOrders.filter((o) => o.status === "draft"),
-    [filteredOrders],
-  );
   const nonDraftOrders = useMemo(
     () => filteredOrders.filter((o) => o.status !== "draft"),
     [filteredOrders],
@@ -388,14 +379,27 @@ export default function OrdersScreen() {
           ),
     [selectedFilter, nonDraftOrders, filteredOrders],
   );
-  const totalPages = Math.max(
-    1,
-    Math.ceil(displayedOrders.length / ITEMS_PER_PAGE),
+  const visibleOrders = useMemo(
+    () => displayedOrders.slice(0, displayCount),
+    [displayedOrders, displayCount],
   );
-  const paginatedOrders = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return displayedOrders.slice(start, start + ITEMS_PER_PAGE);
-  }, [displayedOrders, currentPage]);
+  const hasMore = displayCount < displayedOrders.length;
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        animation.normal,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity,
+      ),
+    );
+    setTimeout(() => {
+      setDisplayCount((prev) => prev + ITEMS_PER_PAGE);
+      setLoadingMore(false);
+    }, animation.normal);
+  }, [hasMore, loadingMore]);
 
   const handleStartOrder = useCallback(() => {
     if (measurementProfiles.length === 0) {
@@ -454,11 +458,11 @@ export default function OrdersScreen() {
           try {
             const cancelRes = await ordersApi.cancel(orderId);
             if (__DEV__)
-              console.debug(
-                "[Orders] cancel (delete draft) response:",
-                JSON.stringify(cancelRes),
-              );
-            setOrders((prev) => prev.filter((o) => o.id !== orderId));
+              // console.debug(
+              //   "[Orders] cancel (delete draft) response:",
+              //   JSON.stringify(cancelRes),
+              // );
+              setOrders((prev) => prev.filter((o) => o.id !== orderId));
           } catch {
             Alert.alert("Error", "Failed to delete draft.");
           }
@@ -476,11 +480,11 @@ export default function OrdersScreen() {
         onPress: async () => {
           try {
             const cancelRes = await ordersApi.cancel(orderId);
-            if (__DEV__)
-              console.debug(
-                "[Orders] cancel order response:",
-                JSON.stringify(cancelRes),
-              );
+            // if (__DEV__)
+            //   console.debug(
+            //     "[Orders] cancel order response:",
+            //     JSON.stringify(cancelRes),
+            //   );
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === orderId ? { ...o, status: "cancelled" } : o,
@@ -501,7 +505,7 @@ export default function OrdersScreen() {
           style={[styles.headerWrap, { paddingTop: insets.top + spacing[4] }]}
         >
           <View style={styles.headerRow}>
-            <Text style={styles.heroTitle}>Commissions</Text>
+            <Text style={styles.heroTitle}>My Orders</Text>
           </View>
         </View>
         <View style={styles.empty}>
@@ -552,7 +556,7 @@ export default function OrdersScreen() {
   const listHeader = (
     <>
       <View style={styles.headerRow}>
-        <Text style={styles.heroTitle}>Commissions</Text>
+        <Text style={styles.heroTitle}>My Orders</Text>
         <Pressable
           onPress={handleStartOrder}
           disabled={loadingProfiles}
@@ -585,7 +589,7 @@ export default function OrdersScreen() {
                   key={value}
                   onPress={() => {
                     setSelectedFilter(value);
-                    setCurrentPage(1);
+                    setDisplayCount(ITEMS_PER_PAGE);
                   }}
                   style={[styles.filterPill, active && styles.filterPillActive]}
                 >
@@ -613,19 +617,23 @@ export default function OrdersScreen() {
         </ScrollView>
         {filteredOrders.length > 0 && (
           <Text style={styles.showingText}>
-            {paginatedOrders.length} of {filteredOrders.length}
+            {visibleOrders.length} of {filteredOrders.length}
           </Text>
         )}
         <View style={styles.sortRow}>
           <Text style={styles.sortLabel}>Sort</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sortScrollContent}
+          >
             {(["newest", "oldest", "price_high", "price_low"] as const).map(
               (opt) => (
                 <Pressable
                   key={opt}
                   onPress={() => {
                     setSortBy(opt);
-                    setCurrentPage(1);
+                    setDisplayCount(ITEMS_PER_PAGE);
                   }}
                   style={[
                     styles.sortOption,
@@ -653,40 +661,9 @@ export default function OrdersScreen() {
         </View>
       </View>
 
-      {selectedFilter === "all" && draftOrders.length > 0 && (
-        <View style={styles.draftsSection}>
-          <Text style={styles.sectionTitle}>Unfinished</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.draftsScroll}
-          >
-            {draftOrders.map((order) => (
-              <View key={order.id} style={styles.draftCardWrap}>
-                <OrderCard
-                  order={order}
-                  isDraft
-                  onView={() => handleViewOrder(order)}
-                  onContinue={() => router.push("/(tabs)/add")}
-                  onDelete={() => handleDeleteOrder(order.id)}
-                  onDuplicate={() => handleDuplicateOrder(order)}
-                  onContact={() => handleContactTailor(order)}
-                  onPayHolding={() => handleViewOrder(order)}
-                  onEdit={() => handleViewOrder(order)}
-                />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       {displayedOrders.length > 0 && (
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {selectedFilter === "all" && draftOrders.length > 0
-              ? "Orders"
-              : "Orders"}
-          </Text>
+          <Text style={styles.sectionTitle}>Orders</Text>
         </View>
       )}
     </>
@@ -720,7 +697,7 @@ export default function OrdersScreen() {
   );
 
   const emptyList =
-    paginatedOrders.length === 0 ? (
+    visibleOrders.length === 0 ? (
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>
           {filteredOrders.length === 0
@@ -756,9 +733,10 @@ export default function OrdersScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={paginatedOrders}
+        data={visibleOrders}
         keyExtractor={(item) => item.reference}
         renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View
             style={[styles.headerWrap, { paddingTop: insets.top + spacing[4] }]}
@@ -767,9 +745,42 @@ export default function OrdersScreen() {
           </View>
         }
         ListEmptyComponent={emptyList}
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.loadMoreWrap}>
+              <Pressable
+                onPress={loadMore}
+                disabled={loadingMore}
+                style={({ pressed }) => [
+                  styles.loadMoreBtn,
+                  (pressed || loadingMore) && styles.loadMoreBtnPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Load more orders"
+              >
+                {loadingMore ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={atelier.ctaText}
+                    style={styles.loadMoreSpinner}
+                  />
+                ) : (
+                  <FontAwesome
+                    name="chevron-down"
+                    size={16}
+                    color={atelier.ctaText}
+                  />
+                )}
+                <Text style={styles.loadMoreText}>
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
         contentContainerStyle={[
           styles.listContent,
-          paginatedOrders.length === 0 && styles.listContentEmpty,
+          visibleOrders.length === 0 && styles.listContentEmpty,
         ]}
         refreshControl={
           <RefreshControl
@@ -777,39 +788,12 @@ export default function OrdersScreen() {
             onRefresh={() => {
               fetchOrders(true);
               fetchProfiles();
+              setDisplayCount(ITEMS_PER_PAGE);
             }}
             tintColor={atelier.accent}
           />
         }
       />
-
-      {totalPages > 1 && (
-        <View style={styles.pagination}>
-          <Pressable
-            onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            style={[
-              styles.pageBtn,
-              currentPage === 1 && styles.pageBtnDisabled,
-            ]}
-          >
-            <FontAwesome name="chevron-left" size={18} color={atelier.muted} />
-          </Pressable>
-          <Text style={styles.pageInfo}>
-            {currentPage} / {totalPages}
-          </Text>
-          <Pressable
-            onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            style={[
-              styles.pageBtn,
-              currentPage === totalPages && styles.pageBtnDisabled,
-            ]}
-          >
-            <FontAwesome name="chevron-right" size={18} color={atelier.muted} />
-          </Pressable>
-        </View>
-      )}
 
       <Modal
         visible={showNoProfileModal}
@@ -935,6 +919,10 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     marginTop: spacing[2],
   },
+  sortScrollContent: {
+    flexDirection: "row",
+    gap: spacing[2],
+  },
   sortLabel: {
     fontSize: typography.fontSize.xs,
     color: atelier.muted,
@@ -952,9 +940,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.sans,
   },
   sortOptionTextActive: { color: atelier.cta },
-  draftsSection: { marginBottom: spacing[12] },
-  draftsScroll: { gap: spacing[4], paddingRight: spacing[4] },
-  draftCardWrap: { width: 280 },
   sectionHeader: { marginBottom: spacing[4] },
   sectionTitle: {
     fontSize: typography.fontSize.sm,
@@ -1120,31 +1105,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing[6],
     textAlign: "center",
   },
-  pagination: {
+  loadMoreWrap: {
+    paddingVertical: spacing[6],
+    paddingHorizontal: spacing[4],
+    alignItems: "center",
+  },
+  loadMoreBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing[4],
-    paddingVertical: spacing[4],
-    paddingHorizontal: spacing[4],
-    borderTopWidth: 1,
-    borderTopColor: atelier.divider,
-    backgroundColor: atelier.background,
+    gap: spacing[2],
+    minHeight: 48,
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[6],
+    borderRadius: radius.xl,
+    backgroundColor: atelier.accent,
+    ...shadows.soft,
   },
-  pageBtn: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: atelier.divider,
-  },
-  pageBtnDisabled: { opacity: 0.5 },
-  pageInfo: {
+  loadMoreBtnPressed: { opacity: 0.9 },
+  loadMoreSpinner: { marginRight: spacing[2] },
+  loadMoreText: {
     fontSize: typography.fontSize.sm,
-    color: atelier.muted,
-    fontFamily: typography.fontFamily.sans,
+    fontFamily: typography.fontFamily.medium,
+    color: atelier.ctaText,
   },
   modalOverlay: {
     flex: 1,

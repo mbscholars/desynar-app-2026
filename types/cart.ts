@@ -1,7 +1,16 @@
 /**
  * Cart types for persistent device cart (no backend).
  * Product snapshot is stored so cart is independent of feed updates.
+ * Customizations align with web OrderingFlow (step 2 / try-on).
  */
+
+/** Single AI revision (preview URL, prompt, optional uploaded/accepted URL). */
+export type CartRevision = {
+  preview: string;
+  prompt: string;
+  uploadedUrl?: string;
+  isAccepted?: boolean;
+};
 
 export type CartProduct = {
   id: number;
@@ -15,6 +24,26 @@ export type CartProduct = {
   price?: number;
   currency?: string;
   category?: string;
+  /** Tailor/organization id for create-order API. Set when adding from feed. */
+  organizationId?: number;
+};
+
+/** Per-line customizations: instructions, voice, AI revisions, accepted image (AI or try-on). */
+export type CartItemCustomization = {
+  textInstructions?: string;
+  voiceNoteUrl?: string;
+  voiceTranscript?: string;
+  aiRevisions?: CartRevision[];
+  /** Accepted customized or try-on image URL; used to replace cart display image. */
+  acceptedCustomizedImageUrl?: string;
+};
+
+/** Snapshot of a measurement profile stored on a cart line (id, name, image URLs for try-on/display). */
+export type CartProfile = {
+  id: string;
+  name: string;
+  frontImageUri: string | null;
+  sideImageUri: string | null;
 };
 
 export type CartItem = {
@@ -22,9 +51,10 @@ export type CartItem = {
   lineId: string;
   product: CartProduct;
   quantity: number;
-  selectedProfileIds: string[];
-  /** Profile names for display (e.g. "John", "Jane"). */
-  selectedProfileNames?: string[];
+  /** Full profile snapshots for this line (replaces selectedProfileIds/selectedProfileNames). */
+  selectedProfiles: CartProfile[];
+  /** Optional customizations (instructions, AI, try-on). */
+  customization?: CartItemCustomization;
 };
 
 export const CART_STORAGE_KEY = "@desynar_cart";

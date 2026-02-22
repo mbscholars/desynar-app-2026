@@ -16,15 +16,15 @@ In-memory cart persisted to device storage. No backend; all data stays on the de
 
 ## API (`useCart()`)
 
-| Method / value       | Description |
-|----------------------|-------------|
-| `items`              | Current cart lines. |
-| `addItem(product, selectedProfileIds, quantity?)` | Append a line. `quantity` defaults to 1. |
-| `removeItem(lineId)` | Remove one line. |
-| `updateQuantity(lineId, quantity)` | Set quantity for a line (no-op if &lt; 1). |
-| `clearCart()`        | Remove all lines. |
-| `holdingFeeTotal`    | Sum of `(product.price * quantity)` for all lines (minor units). |
-| `currency`           | Currency of first item, or `"NGN"`. |
+| Method / value                                    | Description                                                      |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| `items`                                           | Current cart lines.                                              |
+| `addItem(product, selectedProfileIds, quantity?)` | Append a line. `quantity` defaults to 1.                         |
+| `removeItem(lineId)`                              | Remove one line.                                                 |
+| `updateQuantity(lineId, quantity)`                | Set quantity for a line (no-op if &lt; 1).                       |
+| `clearCart()`                                     | Remove all lines.                                                |
+| `holdingFeeTotal`                                 | Sum of `(product.price * quantity)` for all lines (minor units). |
+| `currency`                                        | Currency of first item, or `"NGN"`.                              |
 
 ## Usage
 

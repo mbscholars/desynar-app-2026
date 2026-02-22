@@ -11,6 +11,7 @@ import { useCart } from "@/context/CartContext";
 import { useMeasurementProfiles } from "@/context/MeasurementProfilesContext";
 import type { WearResponse } from "@/services/api";
 import { ApiError, clothesApi } from "@/services/api";
+import type { CartProfile } from "@/types/cart";
 import { getRelationshipLabel } from "@/types/measurement";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
@@ -57,6 +58,8 @@ export type FeedItem = {
   price?: number;
   currency?: string;
   category?: string;
+  /** Tailor/organization id for checkout. From API when available. */
+  organizationId?: number;
 };
 
 function wearToFeedItem(w: WearResponse): FeedItem {
@@ -65,6 +68,7 @@ function wearToFeedItem(w: WearResponse): FeedItem {
       ?.map((m) => m.full_url || m.preview_url || m.original_url)
       .filter(Boolean) ?? [];
   const imageUri = mediaUrls[0] ?? "";
+  const wearWithOrg = w as WearResponse & { organization_id?: number };
   return {
     id: w.id,
     imageUri,
@@ -79,6 +83,7 @@ function wearToFeedItem(w: WearResponse): FeedItem {
     price: w.base_price?.amount,
     currency: w.base_price?.currency_code ?? "USD",
     category: w.category?.name,
+    organizationId: wearWithOrg.organization_id ?? (w.creator as { id?: number } | undefined)?.id,
   };
 }
 
@@ -489,8 +494,8 @@ function ProductDetailDrawer({
   item: FeedItem | null;
   visible: boolean;
   onClose: () => void;
-  onAddToCart: (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => void;
-  onMakeItNow: (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => void;
+  onAddToCart: (item: FeedItem, selectedProfiles: CartProfile[]) => void;
+  onMakeItNow: (item: FeedItem, selectedProfiles: CartProfile[]) => void;
   onShare: (item: FeedItem) => void;
 }) {
   const router = useRouter();
@@ -545,25 +550,32 @@ function ProductDetailDrawer({
     });
   }, []);
 
+  const selectedProfilesForCart = useMemo(
+    () =>
+      profiles
+        .filter((p) => selectedProfileIds.has(p.id))
+        .map(
+          (p): CartProfile => ({
+            id: p.id,
+            name: p.name,
+            frontImageUri: p.frontImageUri ?? null,
+            sideImageUri: p.sideImageUri ?? null,
+          }),
+        ),
+    [profiles, selectedProfileIds],
+  );
+
   const handleContinueToOrder = useCallback(() => {
     if (!item) return;
-    const ids = Array.from(selectedProfileIds);
-    const names = profiles
-      .filter((p) => selectedProfileIds.has(p.id))
-      .map((p) => p.name);
-    onMakeItNow(item, ids, names);
+    onMakeItNow(item, selectedProfilesForCart);
     bottomSheetRef.current?.dismiss();
-  }, [item, selectedProfileIds, profiles, onMakeItNow]);
+  }, [item, selectedProfilesForCart, onMakeItNow]);
 
   const handleAddToCart = useCallback(() => {
     if (!item || selectedProfileIds.size === 0) return;
-    const ids = Array.from(selectedProfileIds);
-    const names = profiles
-      .filter((p) => selectedProfileIds.has(p.id))
-      .map((p) => p.name);
-    onAddToCart(item, ids, names);
+    onAddToCart(item, selectedProfilesForCart);
     bottomSheetRef.current?.dismiss();
-  }, [item, selectedProfileIds, profiles, onAddToCart]);
+  }, [item, selectedProfileIds.size, selectedProfilesForCart, onAddToCart]);
 
   const handleShare = useCallback(() => {
     if (item) onShare(item);
@@ -633,11 +645,9 @@ function ProductDetailDrawer({
         </Text>
         <Text style={styles.drawerPriceLabel}>per piece</Text>
 
-        {item.description ? (
-          <Text style={styles.drawerDescription} numberOfLines={4}>
-            {item.description}
-          </Text>
-        ) : null}
+        <Text style={styles.drawerDescription} numberOfLines={4}>
+          {item.description?.trim() || "Comfortable, versatile piece. Materials and care details can be added by the designer."}
+        </Text>
 
         {item.tags && item.tags.length > 0 ? (
           <View style={styles.drawerTagsWrap}>
@@ -677,6 +687,11 @@ function ProductDetailDrawer({
             <Text style={styles.drawerMetaValue}>{item.category}</Text>
           </View>
         ) : null}
+
+        <View style={styles.drawerMetaRow}>
+          <Text style={styles.drawerMetaLabel}>Estimated delivery</Text>
+          <Text style={styles.drawerMetaValue}>7 days</Text>
+        </View>
       </View>
 
       <View
@@ -991,15 +1006,15 @@ export default function HomeScreen() {
   }, []);
 
   const handleAddToCart = useCallback(
-    (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => {
-      addItem(item, selectedProfileIds, 1, selectedProfileNames);
+    (item: FeedItem, selectedProfiles: CartProfile[]) => {
+      addItem(item, selectedProfiles, 1);
     },
     [addItem],
   );
 
   const handleMakeItNow = useCallback(
-    (item: FeedItem, selectedProfileIds: string[], selectedProfileNames?: string[]) => {
-      addItem(item, selectedProfileIds, 1, selectedProfileNames);
+    (item: FeedItem, selectedProfiles: CartProfile[]) => {
+      addItem(item, selectedProfiles, 1);
       (router.push as (href: string) => void)("/review");
     },
     [addItem, router],

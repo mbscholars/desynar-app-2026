@@ -1,12 +1,13 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert } from "react-native";
 
 const MEDIA_TYPES = ["images"] as const;
 
 /**
  * Presents "Take photo" / "Choose from library" / "Cancel", then launches
  * camera or library and returns the selected image URI, or null if cancelled.
+ * Editing is enabled with no fixed aspect ratio so the user can free-form crop.
  */
 export function useImagePicker() {
   const pickImage = useCallback(async (): Promise<string | null> => {
@@ -37,7 +38,6 @@ export function useImagePicker() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: MEDIA_TYPES,
         allowsEditing: true,
-        aspect: [3, 4],
         quality: 0.8,
       });
       if (result.canceled || !result.assets?.[0]?.uri) return null;
@@ -55,7 +55,6 @@ export function useImagePicker() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: MEDIA_TYPES,
       allowsEditing: true,
-      aspect: [3, 4],
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.[0]?.uri) return null;

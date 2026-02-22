@@ -9,6 +9,13 @@ module.exports = {
       ...(appJson.expo?.plugins || []),
       "expo-video",
       [
+        "expo-av",
+        {
+          microphonePermission:
+            "Allow Desynar to record voice instructions for your order.",
+        },
+      ],
+      [
         "expo-image-picker",
         {
           photosPermission: "Allow Desynar to access your photos for measurement profile photos.",

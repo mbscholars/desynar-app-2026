@@ -1,18 +1,31 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { CartItem, CartProduct } from "@/types/cart";
+import type {
+  CartItem,
+  CartItemCustomization,
+  CartProfile,
+  CartProduct,
+} from "@/types/cart";
 import { CART_STORAGE_KEY } from "@/types/cart";
+
+/** Partial update for a cart line (e.g. after item details / try-on). */
+export type CartItemUpdate = {
+  product?: Partial<CartProduct>;
+  quantity?: number;
+  customization?: CartItemCustomization;
+};
 
 type CartContextValue = {
   items: CartItem[];
   addItem: (
     product: CartProduct,
-    selectedProfileIds: string[],
+    selectedProfiles: CartProfile[],
     quantity?: number,
-    selectedProfileNames?: string[],
   ) => void;
   removeItem: (lineId: string) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
+  /** Update line by lineId (merge customization, shallow-merge product). */
+  updateItem: (lineId: string, update: CartItemUpdate) => void;
   clearCart: () => void;
   /** Sum of (item.price * item.quantity) for all items (holding fee total). Price in minor units. */
   holdingFeeTotal: number;
@@ -40,6 +53,7 @@ function productToCartProduct(p: {
   price?: number;
   currency?: string;
   category?: string;
+  organizationId?: number;
 }): CartProduct {
   return {
     id: p.id,
@@ -53,11 +67,29 @@ function productToCartProduct(p: {
     price: p.price,
     currency: p.currency ?? "NGN",
     category: p.category,
+    organizationId: p.organizationId,
   };
 }
 
 function generateLineId(): string {
   return `line_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Migrate legacy cart items (selectedProfileIds/selectedProfileNames) to selectedProfiles. */
+function migrateCartItem(
+  i: CartItem & { selectedProfileIds?: string[]; selectedProfileNames?: string[] },
+): CartItem {
+  if (i.selectedProfiles?.length) return i;
+  const ids = i.selectedProfileIds ?? [];
+  const names = i.selectedProfileNames ?? [];
+  const selectedProfiles: CartProfile[] = ids.map((id, idx) => ({
+    id,
+    name: names[idx] ?? "Profile",
+    frontImageUri: null,
+    sideImageUri: null,
+  }));
+  const { selectedProfileIds: _a, selectedProfileNames: _b, ...rest } = i;
+  return { ...rest, selectedProfiles };
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -69,8 +101,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(CART_STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as CartItem[];
-          if (Array.isArray(parsed)) setItems(parsed);
+          const parsed = JSON.parse(raw) as (CartItem & {
+            selectedProfileIds?: string[];
+            selectedProfileNames?: string[];
+          })[];
+          if (Array.isArray(parsed)) {
+            const migrated = parsed.map((i) => migrateCartItem(i));
+            setItems(migrated);
+          }
         }
       } catch {
         // ignore
@@ -91,12 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [hydrated, items]);
 
   const addItem = useCallback(
-    (
-      product: CartProduct,
-      selectedProfileIds: string[],
-      quantity = 1,
-      selectedProfileNames?: string[],
-    ) => {
+    (product: CartProduct, selectedProfiles: CartProfile[], quantity = 1) => {
       const cartProduct = productToCartProduct(product);
       setItems((prev) => [
         ...prev,
@@ -104,8 +137,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           lineId: generateLineId(),
           product: cartProduct,
           quantity,
-          selectedProfileIds: [...selectedProfileIds],
-          selectedProfileNames: selectedProfileNames ?? [],
+          selectedProfiles: selectedProfiles.map((p) => ({
+            id: p.id,
+            name: p.name,
+            frontImageUri: p.frontImageUri ?? null,
+            sideImageUri: p.sideImageUri ?? null,
+          })),
         },
       ]);
     },
@@ -122,6 +159,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       prev.map((i) =>
         i.lineId === lineId ? { ...i, quantity } : i,
       ),
+    );
+  }, []);
+
+  const updateItem = useCallback((lineId: string, update: CartItemUpdate) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.lineId !== lineId) return i;
+        const next: CartItem = { ...i };
+        if (update.product != null) {
+          next.product = { ...i.product, ...update.product };
+        }
+        if (update.quantity != null) next.quantity = update.quantity;
+        if (update.customization !== undefined) {
+          next.customization = update.customization;
+        }
+        return next;
+      }),
     );
   }, []);
 
@@ -145,6 +199,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addItem,
       removeItem,
       updateQuantity,
+      updateItem,
       clearCart,
       holdingFeeTotal,
       currency,
@@ -154,6 +209,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addItem,
       removeItem,
       updateQuantity,
+      updateItem,
       clearCart,
       holdingFeeTotal,
       currency,
