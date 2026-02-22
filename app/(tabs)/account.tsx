@@ -240,7 +240,7 @@ export default function AccountScreen() {
           style={[styles.logoutBtn, { borderColor: atelier.divider }]}
           textStyle={{ color: atelier.cta }}
         />
-        <Pressable
+        {/* <Pressable
           onPress={handleDeleteAccount}
           disabled={logoutLoading || deleteLoading}
           style={({ pressed }) => [
@@ -252,7 +252,7 @@ export default function AccountScreen() {
           <Text style={styles.deleteBtnText}>
             {deleteLoading ? "Deleting…" : "Delete account"}
           </Text>
-        </Pressable>
+        </Pressable> */}
       </View>
     </ScrollView>
   );

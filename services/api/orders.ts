@@ -1,3 +1,5 @@
+import * as FileSystem from "expo-file-system";
+
 import { api, request } from "./client";
 import type { OrderSingleResponse, OrdersListResponse } from "./types";
 
@@ -151,33 +153,57 @@ export const ordersApi = {
   /**
    * Upload voice note for order customization.
    * POST /api/v1/orders/voice-note with multipart audio file.
-   * Backend accepts: webm, mp3, mp4, wav, ogg. expo-av records to m4a → send as mp4.
+   * Backend accepts: webm, mp3, mp4, wav, ogg.
+   * expo-av records to m4a (iOS/Android); we copy to a file named voice.mp4 so the
+   * upload sends an accepted extension and avoid "file of type" validation errors.
    * Returns URL, transcript, and duration.
    */
   uploadVoiceNote: async (
     audioUri: string,
   ): Promise<VoiceNoteUploadResponse> => {
-    const formData = new FormData();
-    const ext = audioUri.split(".").pop()?.toLowerCase() ?? "mp4";
+    const ext = audioUri.split(".").pop()?.toLowerCase() ?? "";
     const allowed = ["webm", "mp3", "mp4", "wav", "ogg"];
-    const name = allowed.includes(ext) ? `voice.${ext}` : "voice.mp4";
-    const mime: Record<string, string> = {
-      webm: "audio/webm",
-      mp3: "audio/mpeg",
-      mp4: "audio/mp4",
-      m4a: "audio/mp4",
-      wav: "audio/wav",
-      ogg: "audio/ogg",
-    };
-    const type = mime[ext] ?? "audio/mp4";
-    formData.append("audio", {
-      uri: audioUri,
-      name,
-      type,
-    } as unknown as Blob);
-    return request<VoiceNoteUploadResponse>("POST", `${BASE}/voice-note`, {
-      formData,
-      requiresAuth: true,
-    });
+    const alreadyAccepted = allowed.includes(ext);
+
+    let uriToUpload = audioUri;
+    let tempPath: string | null = null;
+
+    if (!alreadyAccepted) {
+      const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+      if (!dir) throw new Error("No cache directory for voice note");
+      tempPath = `${dir}voice_${Date.now()}.mp4`;
+      await FileSystem.copyAsync({
+        from: audioUri,
+        to: tempPath,
+      });
+      uriToUpload = tempPath;
+    }
+
+    try {
+      const formData = new FormData();
+      const name = alreadyAccepted ? `voice.${ext}` : "voice.mp4";
+      const mime: Record<string, string> = {
+        webm: "audio/webm",
+        mp3: "audio/mpeg",
+        mp4: "audio/mp4",
+        m4a: "audio/mp4",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+      };
+      const type = mime[ext] ?? "audio/mp4";
+      formData.append("audio", {
+        uri: uriToUpload,
+        name,
+        type,
+      } as unknown as Blob);
+      return await request<VoiceNoteUploadResponse>("POST", `${BASE}/voice-note`, {
+        formData,
+        requiresAuth: true,
+      });
+    } finally {
+      if (tempPath) {
+        FileSystem.deleteAsync(tempPath, { idempotent: true }).catch(() => {});
+      }
+    }
   },
 };

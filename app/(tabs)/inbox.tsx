@@ -60,6 +60,7 @@ export default function InboxScreen() {
     setError(null);
     try {
       const res = await chatApi.listConversations({ per_page: 25, enriched: true });
+      console.log("[Inbox] chat inbox response", JSON.stringify(res, null, 2));
       const raw = res.data;
       const list = Array.isArray(raw)
         ? raw
@@ -180,6 +181,7 @@ export default function InboxScreen() {
             refreshing={refreshing}
             onRefresh={() => fetchConversations(true)}
             tintColor={atelier.accent}
+            colors={[atelier.accent]}
           />
         }
       />

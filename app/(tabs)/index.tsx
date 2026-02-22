@@ -961,7 +961,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isAuthenticated, setAuthenticated } = useAuth();
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
   const listRef = useRef<FlatList>(null);
   const [listHeight, setListHeight] = useState(SCREEN_HEIGHT - TAB_BAR_HEIGHT);
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
@@ -1139,7 +1139,7 @@ export default function HomeScreen() {
                 resizeMode="contain"
                 accessibilityLabel="Desynar"
               />
-              <Text style={styles.logoCatalog}> catalog</Text>
+              {/* <Text style={styles.logoCatalog}> catalog</Text> */}
             </View>
             <View style={styles.topBarRight}>
               <Pressable
@@ -1148,6 +1148,8 @@ export default function HomeScreen() {
                   styles.iconBtn,
                   pressed && { opacity: 0.7 },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
               >
                 <FontAwesome name="bell" size={22} color="#FFFFFF" />
                 {notificationCount > 0 && (
@@ -1164,9 +1166,32 @@ export default function HomeScreen() {
                   styles.iconBtn,
                   pressed && { opacity: 0.7 },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Search"
               >
                 <FontAwesome name="search" size={22} color="#FFFFFF" />
               </Pressable>
+              {cartItems.length > 0 && (
+                <Pressable
+                  hitSlop={MIN_TAP}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  onPress={() => router.push("/review")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cart"
+                >
+                  <FontAwesome name="shopping-cart" size={22} color="#FFFFFF" />
+                  {cartItems.length > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {cartItems.length > 99 ? "99+" : cartItems.length}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -1628,39 +1653,48 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[2],
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[3],
+    minHeight: 44,
   },
   topBarInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 44,
   },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[3],
+    flex: 1,
+    minWidth: 0,
   },
   logoImage: {
-    height: 28,
-    width: 100,
+    height: 26,
+    width: 90,
   },
   logoCatalog: {
-    fontSize: typography.fontSize.lg,
-    color: "rgba(255,255,255,0.8)",
+    fontSize: typography.fontSize.base,
+    color: "rgba(255,255,255,0.85)",
     fontFamily: typography.fontFamily.sans,
+    marginLeft: spacing[2],
   },
-  topBarRight: { flexDirection: "row", alignItems: "center", gap: spacing[3] },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
   iconBtn: {
-    minWidth: MIN_TAP,
-    minHeight: MIN_TAP,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
   badge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: 6,
+    right: 6,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
