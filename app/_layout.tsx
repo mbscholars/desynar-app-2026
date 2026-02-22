@@ -86,6 +86,8 @@ function RootLayoutNav() {
         <Stack.Screen name="chat/[id]" />
         <Stack.Screen name="measurements" />
         <Stack.Screen name="review" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="notifications" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>

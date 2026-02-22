@@ -406,7 +406,7 @@ export default function OrdersScreen() {
       setShowNoProfileModal(true);
       return;
     }
-    router.push("/(tabs)/add");
+    router.push("/(tabs)");
   }, [measurementProfiles.length, router]);
 
   const goToMeasurements = useCallback(() => {

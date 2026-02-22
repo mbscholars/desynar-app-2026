@@ -9,9 +9,15 @@ import type {
 const BASE = '/api/v1';
 
 export const clothesApi = {
-  /** List all wears (catalog). Public; send token if logged in for likes. */
-  getList: () =>
-    api.get<ClothesListResponse>(`${BASE}/clothes`, { requiresAuth: false }),
+  /** List wears (catalog). Optional q for search. Public; send token if logged in for likes. */
+  getList: (params?: { q?: string }) => {
+    const query = params?.q?.trim()
+      ? `?q=${encodeURIComponent(params.q.trim())}`
+      : "";
+    return api.get<ClothesListResponse>(`${BASE}/clothes${query}`, {
+      requiresAuth: false,
+    });
+  },
 
   /** Single wear by ID. */
   getById: (id: number) =>

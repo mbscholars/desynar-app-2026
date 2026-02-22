@@ -28,7 +28,14 @@ export type {
 } from "./chat";
 export { clothesApi } from "./clothes";
 export { measurementProfilesApi } from "./measurement-profiles";
+export { notificationsApi } from "./notifications";
+export type {
+  NotificationApiItem,
+  UnreadCountResponse,
+} from "./notifications";
 export { ordersApi } from "./orders";
+export { searchApi } from "./search";
+export type { SearchSuggestion } from "./search";
 export type { GetOrdersParams } from "./orders";
 export { deleteAccount, getProfile } from "./profile";
 export type { UserProfile } from "./profile";

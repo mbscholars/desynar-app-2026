@@ -5,6 +5,8 @@ import {
   typography,
   atelier,
 } from "@/constants/theme";
+import { searchApi } from "@/services/api";
+import type { SearchSuggestion } from "@/services/api";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -24,19 +26,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const RECENT_SEARCHES_KEY = "desynar_search_recent";
 const MAX_RECENT = 20;
 const RECENT_VISIBLE = 5;
-
-/** Static suggestions for "You may like" (replace with api/v1/search/suggestions later). */
-const STATIC_SUGGESTIONS = [
-  { id: "1", text: "tank girl", highlighted: true },
-  { id: "2", text: "VIEW ONCE", highlighted: true },
-  { id: "3", text: "oops i dropped my pencil", highlighted: false },
-  { id: "4", text: "Zulu Screams Dance Challenge", highlighted: false },
-  { id: "5", text: "hiv's skin rash look in men", highlighted: false },
-  { id: "6", text: "New Trending Video", highlighted: false },
-  { id: "7", text: "girls night", highlighted: false },
-  { id: "8", text: "street style", highlighted: false },
-  { id: "9", text: "minimal outfit", highlighted: false },
-];
 
 async function loadRecentSearches(): Promise<string[]> {
   try {
@@ -63,8 +52,25 @@ export default function SearchScreen() {
   const [recent, setRecent] = useState<string[]>([]);
   const [recentLoaded, setRecentLoaded] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
-  const [suggestions, setSuggestions] = useState(STATIC_SUGGESTIONS);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsRefreshing, setSuggestionsRefreshing] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+
+  const fetchSuggestions = useCallback(async () => {
+    try {
+      const list = await searchApi.getSuggestions({ limit: 15 });
+      setSuggestions(Array.isArray(list) ? list : []);
+    } catch {
+      // Keep previous list on error (per backend doc)
+    } finally {
+      setSuggestionsLoading(false);
+      setSuggestionsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSuggestions();
+  }, [fetchSuggestions]);
 
   const loadRecent = useCallback(async () => {
     const list = await loadRecentSearches();
@@ -117,11 +123,8 @@ export default function SearchScreen() {
 
   const handleRefreshSuggestions = useCallback(async () => {
     setSuggestionsRefreshing(true);
-    // Simulate network; later: GET api/v1/search/suggestions (auth)
-    await new Promise((r) => setTimeout(r, 600));
-    setSuggestions(STATIC_SUGGESTIONS);
-    setSuggestionsRefreshing(false);
-  }, []);
+    await fetchSuggestions();
+  }, [fetchSuggestions]);
 
   const visibleRecent = showAllRecent
     ? recent
@@ -130,7 +133,7 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header: back, search bar, Search button */}
+      {/* Header: back, search bar, Search button — TikTok-like dark */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
@@ -159,6 +162,7 @@ export default function SearchScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
+           
         </View>
         <Pressable
           onPress={handleSearch}
@@ -263,32 +267,39 @@ export default function SearchScreen() {
               <Text style={styles.refreshText}>Refresh</Text>
             </Pressable>
           </View>
-          {suggestions.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => handleSuggestionPress(item.text)}
-              style={({ pressed }) => [
-                styles.suggestionRow,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View
-                style={[
-                  styles.bullet,
-                  item.highlighted && styles.bulletHighlighted,
+          {suggestionsLoading && suggestions.length === 0 ? (
+            <View style={styles.suggestionsLoadingWrap}>
+              <ActivityIndicator size="small" color={atelier.accent} />
+              <Text style={styles.suggestionsLoadingText}>Loading…</Text>
+            </View>
+          ) : (
+            suggestions.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => handleSuggestionPress(item.text)}
+                style={({ pressed }) => [
+                  styles.suggestionRow,
+                  pressed && styles.pressed,
                 ]}
-              />
-              <Text
-                style={[
-                  styles.suggestionText,
-                  item.highlighted && styles.suggestionTextHighlighted,
-                ]}
-                numberOfLines={1}
               >
-                {item.text}
-              </Text>
-            </Pressable>
-          ))}
+                <View
+                  style={[
+                    styles.bullet,
+                    item.highlighted && styles.bulletHighlighted,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.suggestionText,
+                    item.highlighted && styles.suggestionTextHighlighted,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.text}
+                </Text>
+              </Pressable>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -333,10 +344,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     paddingHorizontal: spacing[2],
-    paddingRight: spacing[3],
+    paddingRight: spacing[1],
     fontSize: typography.fontSize.base,
     fontFamily: typography.fontFamily.sans,
     color: atelier.cta,
+  },
+  micBtn: {
+    width: 40,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchBtn: {
     backgroundColor: atelier.accent,
@@ -355,7 +372,7 @@ const styles = StyleSheet.create({
   searchBtnText: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.semibold,
-    color: atelier.ctaText,
+    color: atelier.background,
   },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing[4], paddingTop: spacing[4] },
@@ -415,6 +432,17 @@ const styles = StyleSheet.create({
     marginRight: spacing[1],
   },
   seeMoreChevron: {},
+  suggestionsLoadingWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    paddingVertical: spacing[4],
+  },
+  suggestionsLoadingText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.sans,
+    color: atelier.muted,
+  },
   suggestionRow: {
     flexDirection: "row",
     alignItems: "center",
