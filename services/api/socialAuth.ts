@@ -3,9 +3,14 @@
  * 1. Get OAuth URL from backend (with optional mobile redirect_uri).
  * 2. Open URL in in-app browser; backend redirects to redirect_uri with token (or code).
  * 3. Parse result and return token for login.
+ *
+ * Backend must redirect to: https://auth.expo.io/@OWNER/SLUG?token=JWT
+ * (exactly that query param). If backend redirects without ?token=, Expo shows
+ * "Something went wrong trying to finish signing in."
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { api } from "./client";
 
@@ -40,15 +45,23 @@ export type SocialLoginResponse = {
   };
 };
 
-/** Expo Auth proxy URL — backend must redirect here with ?token= after Google callback. */
-const EXPO_AUTH_REDIRECT_URI = "https://auth.expo.io/@desynar/desynar";
+/**
+ * Build Expo Auth proxy URL from app config. Backend must redirect here with ?token= after Google callback.
+ * Format: https://auth.expo.io/@OWNER/SLUG — OWNER must match your Expo account (username or org slug).
+ * Set "owner" in app.json to the same value as your Expo dashboard (e.g. "desynar-innovation-ltd").
+ */
+function getExpoAuthRedirectUri(): string {
+  const owner = Constants.expoConfig?.owner ?? "desynar";
+  const slug = Constants.expoConfig?.slug ?? "desynar";
+  return `https://auth.expo.io/@${owner}/${slug}`;
+}
 
 /**
  * Get redirect URI for the app so the backend can redirect here after OAuth.
  * Uses Expo auth proxy so the in-app browser can capture the redirect and return to the app.
  */
 export function getRedirectUri(): string {
-  return EXPO_AUTH_REDIRECT_URI;
+  return getExpoAuthRedirectUri();
 }
 
 /**
@@ -65,7 +78,7 @@ export async function getGoogleOAuthUrl(
     redirectUri ?? "(none)",
   );
   const res = await api.get<OAuthUrlResponse>(
-    `/api/v1/auth/social/oauth-url?${params.toString()}`,
+    `/api/v1/auth/social/app/oauth-url?${params.toString()}`,
     { requiresAuth: false },
   );
   console.debug(
@@ -132,6 +145,9 @@ export async function signInWithGoogle(): Promise<string> {
 
   const url = result.url;
   const params = parseRedirectParams(url);
+  // Debug: log redirect URL with token redacted (helps verify backend sent ?token=)
+  const safeUrl = url.replace(/([?&])token=[^&]*/g, "$1token=***");
+  console.debug("[socialAuth] redirect URL received:", safeUrl);
   const token = params.get("token");
   const code = params.get("code");
   const stateFromUrl = params.get("state");

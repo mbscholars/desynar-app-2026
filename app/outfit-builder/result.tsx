@@ -18,6 +18,8 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useOutfitUpload } from "@/context/OutfitUploadContext";
 import { outfitBuilderColors } from "@/constants/outfitBuilder";
 import { spacing, typography } from "@/constants/theme";
+import type { FeedItem } from "@/types/feed";
+import { wearToFeedItem } from "@/types/feed";
 import { createProductFromOutfitGenerate } from "@/services/api/outfitBuilder";
 
 function errorMessage(code: string): string {
@@ -38,7 +40,7 @@ function errorMessage(code: string): string {
 export default function OutfitBuilderResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setPendingViewProductId } = useOutfitUpload();
+  const { setPendingViewItem } = useOutfitUpload();
   const params = useLocalSearchParams<{ imageUrls?: string; jobId?: string }>();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [addingToCatalog, setAddingToCatalog] = useState(false);
@@ -69,8 +71,10 @@ export default function OutfitBuilderResultScreen() {
     setAddingToCatalog(true);
     try {
       const result = await createProductFromOutfitGenerate(jobId);
+      // console.log("[Add to catalog] API response:", result);
       if (result.success) {
-        const productId = result.productId;
+        const feedItem: FeedItem | null =
+          result.cloth != null ? wearToFeedItem(result.cloth) : null;
         Alert.alert(
           "Added to catalog",
           `"${result.productName ?? "Generated Outfit"}" has been created as a draft. You can set the price and publish it from your catalog.`,
@@ -79,7 +83,7 @@ export default function OutfitBuilderResultScreen() {
             {
               text: "View",
               onPress: () => {
-                if (productId != null) setPendingViewProductId(productId);
+                if (feedItem != null) setPendingViewItem(feedItem);
                 router.replace("/(tabs)");
               },
             },
@@ -93,7 +97,7 @@ export default function OutfitBuilderResultScreen() {
     } finally {
       setAddingToCatalog(false);
     }
-  }, [jobId, router]);
+  }, [jobId, router, setPendingViewItem]);
 
   const handleDone = useCallback(() => {
     router.replace("/outfit-builder");

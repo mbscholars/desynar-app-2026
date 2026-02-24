@@ -11,6 +11,7 @@
 import type { LookRecipe } from "@/types/outfitRecipe";
 import { GARMENT_COLORS } from "@/constants/outfitBuilder";
 import { request, ApiError } from "./client";
+import type { WearResponse } from "./types";
 
 const DRAFT_PATH = "/api/v1/outfit-builder/draft";
 const GENERATE_PATH = "/api/v1/ai/outfit-generate";
@@ -259,10 +260,8 @@ export async function pollOutfitJob(
 export interface CreateProductFromOutfitResponse {
   success: boolean;
   message?: string;
-  data?: {
-    product_id: number;
-    name: string;
-  };
+  /** Full cloth (same shape as clothes API) so UI can show feed card without a second request. */
+  data?: WearResponse & { product_id?: number };
   error?: string;
 }
 
@@ -270,7 +269,7 @@ export interface CreateProductFromOutfitResponse {
  * Create a product from a completed outfit_generate job.
  * POST /api/v1/ai/create-product-from-outfit with Bearer auth.
  * Body: { job_id: string }. Job must exist, belong to user, and be completed.
- * Returns 201: { success: true, data: { product_id, name } }.
+ * Returns 201: { success: true, data: cloth } with full cloth (id, name, description, status, base_price, type, lead_time_days, creator, media, created_at, updated_at).
  * Errors: 404 JOB_NOT_FOUND, 400 JOB_NOT_COMPLETED | NO_IMAGES | PRODUCT_CREATION_FAILED.
  */
 export async function createProductFromOutfitGenerate(
@@ -279,6 +278,8 @@ export async function createProductFromOutfitGenerate(
   success: boolean;
   productId?: number;
   productName?: string;
+  /** Full cloth when success; use with wearToFeedItem to show in feed / drawer. */
+  cloth?: WearResponse;
   error?: string;
 }> {
   try {
@@ -291,11 +292,13 @@ export async function createProductFromOutfitGenerate(
       },
     );
     const data = res?.data;
-    if (res?.success && data?.product_id != null) {
+    if (res?.success && data != null && (data.id != null || (data as { product_id?: number }).product_id != null)) {
+      const cloth = data as WearResponse;
       return {
         success: true,
-        productId: data.product_id,
+        productId: cloth.id ?? (data as { product_id?: number }).product_id,
         productName: data.name,
+        cloth,
       };
     }
     return {

@@ -48,18 +48,18 @@ export default function HomeScreen() {
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-  const { uploadedItem, pendingViewProductId, setPendingViewProductId } = useOutfitUpload();
+  const { uploadedItem, pendingViewItem, setPendingViewItem } = useOutfitUpload();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  /** Display list: uploaded outfit first (if any), then API feed. */
-  const displayFeed = useMemo(
-    () => (uploadedItem ? [uploadedItem, ...feed] : feed),
-    [uploadedItem, feed],
-  );
+  /** Display list: pending view item (e.g. just added to catalog) first, then uploaded outfit, then API feed. */
+  const displayFeed = useMemo(() => {
+    const head = [pendingViewItem, uploadedItem].filter(Boolean) as FeedItem[];
+    return head.length > 0 ? [...head, ...feed] : feed;
+  }, [pendingViewItem, uploadedItem, feed]);
 
   const prevCartCountRef = useRef<number | null>(null);
   const cartScale = useRef(new Animated.Value(1)).current;
@@ -107,23 +107,16 @@ export default function HomeScreen() {
     }, [isAuthenticated]),
   );
 
-  /** When landing with pendingViewProductId (e.g. after "Add to catalog" → View), fetch that product and open its drawer. */
+  /** When landing with pendingViewItem (e.g. after "Add to catalog" → View), show it in feed and open its drawer. Same UX as upload. */
   useFocusEffect(
     useCallback(() => {
-      const id = pendingViewProductId;
-      if (id == null) return;
-      setPendingViewProductId(null);
-      clothesApi
-        .getById(id)
-        .then((res) => {
-          if (res?.data) {
-            const feedItem = wearToFeedItem(res.data);
-            setSelectedItem(feedItem);
-            setDrawerVisible(true);
-          }
-        })
-        .catch(() => {});
-    }, [pendingViewProductId, setPendingViewProductId]),
+      const item = pendingViewItem;
+      if (item == null) return;
+      setFeed((prev) => [item, ...prev]);
+      setSelectedItem(item);
+      setDrawerVisible(true);
+      setPendingViewItem(null);
+    }, [pendingViewItem, setPendingViewItem]),
   );
 
   /** Show login modal after 3s of activity when not authenticated. */

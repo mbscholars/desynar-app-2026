@@ -9,13 +9,14 @@ import type {
 const BASE = '/api/v1';
 
 export const clothesApi = {
-  /** List wears (catalog). Optional q for search. Public; send token if logged in for likes. */
+  /** List wears (catalog). Optional q for search. Public; sends Bearer token when user is logged in. */
   getList: (params?: { q?: string }) => {
     const query = params?.q?.trim()
       ? `?q=${encodeURIComponent(params.q.trim())}`
       : "";
     return api.get<ClothesListResponse>(`${BASE}/clothes${query}`, {
       requiresAuth: false,
+      attachTokenIfPresent: true,
     });
   },
 

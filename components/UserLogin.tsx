@@ -901,7 +901,7 @@ export function UserLogin({ onClose, onSuccess }: UserLoginProps) {
               <>
                 <Text style={styles.brand}>DESYNAR</Text>
                 <Text style={styles.tagline}>Create your account</Text>
-                <Text style={styles.signInLabel}>Join the atelier</Text>
+                {/* <Text style={styles.signInLabel}>Join the atelier</Text> */}
                 {signupSuccess ? (
                   <Text style={styles.successText}>
                     Account created. Sign in with your email below.

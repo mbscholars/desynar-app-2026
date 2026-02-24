@@ -51,10 +51,14 @@ export async function request<T>(
     body?: object;
     formData?: FormData;
     requiresAuth?: boolean;
+    /** When true, attach Bearer token if present (e.g. for public endpoints that personalize when logged in). */
+    attachTokenIfPresent?: boolean;
   },
 ): Promise<T> {
   const url = resolveUrl(path);
-  const token = options?.requiresAuth !== false ? await getToken() : null;
+  const shouldAttachToken =
+    options?.requiresAuth !== false || options?.attachTokenIfPresent === true;
+  const token = shouldAttachToken ? await getToken() : null;
 
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -112,19 +116,21 @@ export async function request<T>(
   return (json ?? {}) as T;
 }
 
+type RequestOptions = { requiresAuth?: boolean; attachTokenIfPresent?: boolean };
+
 export const api = {
-  get: <T>(path: string, options?: { requiresAuth?: boolean }) =>
+  get: <T>(path: string, options?: RequestOptions) =>
     request<T>("GET", path, options),
 
   post: <T>(
     path: string,
     body?: object,
-    options?: { requiresAuth?: boolean },
+    options?: RequestOptions,
   ) => request<T>("POST", path, { ...options, body }),
 
-  put: <T>(path: string, body?: object, options?: { requiresAuth?: boolean }) =>
+  put: <T>(path: string, body?: object, options?: RequestOptions) =>
     request<T>("PUT", path, { ...options, body }),
 
-  delete: <T>(path: string, options?: { requiresAuth?: boolean }) =>
+  delete: <T>(path: string, options?: RequestOptions) =>
     request<T>("DELETE", path, options),
 };

@@ -2,6 +2,7 @@
   "expo": {
     "name": "Desynar",
     "slug": "desynar",
+    "owner": "desynar-innovation-ltd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -18,6 +19,7 @@
       "bundleIdentifier": "com.desynar.app"
     },
     "android": {
+      "package": "com.desynar.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#293225"
@@ -44,6 +46,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "eea2daa5-9908-46bb-a81f-9fc4b56c4d0f"
+      }
     }
   }
 }
