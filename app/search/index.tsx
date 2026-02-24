@@ -302,20 +302,28 @@ export default function SearchScreen() {
           )}
         </View>
 
-        {/* Can't find it? Make it now — link to generate outfit */}
+        {/* Can't find it? Make it now with AI or upload your design */}
         <View style={styles.makeItSection}>
           <Text style={styles.makeItLabel}>Can't find it? </Text>
-          <Pressable
-            onPress={() => router.push("/outfit-builder")}
-            style={({ pressed }) => [
-              styles.makeItLink,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="link"
-            accessibilityLabel="Make it now, go to generate outfit"
-          >
-            <Text style={styles.makeItLinkText}>Make it now</Text>
-          </Pressable>
+          <View style={styles.makeItOptions}>
+            <Pressable
+              onPress={() => router.push("/outfit-builder")}
+              style={({ pressed }) => [styles.makeItLink, pressed && styles.pressed]}
+              accessibilityRole="link"
+              accessibilityLabel="Make it now with AI"
+            >
+              <Text style={styles.makeItLinkText}>Make it now with AI</Text>
+            </Pressable>
+            <Text style={styles.makeItOr}> or </Text>
+            <Pressable
+              onPress={() => router.push("/upload-outfit")}
+              style={({ pressed }) => [styles.makeItLink, pressed && styles.pressed]}
+              accessibilityRole="link"
+              accessibilityLabel="Upload your design"
+            >
+              <Text style={styles.makeItLinkText}>Upload your design</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -497,9 +505,20 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.sans,
     color: atelier.muted,
   },
+  makeItOptions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
   makeItLink: {
     paddingVertical: spacing[1],
     paddingHorizontal: spacing[1],
+  },
+  makeItOr: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.sans,
+    color: atelier.muted,
   },
   makeItLinkText: {
     fontSize: typography.fontSize.base,

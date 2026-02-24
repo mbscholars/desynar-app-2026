@@ -48,7 +48,7 @@ export default function HomeScreen() {
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-  const { uploadedItem } = useOutfitUpload();
+  const { uploadedItem, pendingViewProductId, setPendingViewProductId } = useOutfitUpload();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,6 +105,25 @@ export default function HomeScreen() {
         .then((res) => setNotificationCount(res.count ?? 0))
         .catch(() => setNotificationCount(0));
     }, [isAuthenticated]),
+  );
+
+  /** When landing with pendingViewProductId (e.g. after "Add to catalog" → View), fetch that product and open its drawer. */
+  useFocusEffect(
+    useCallback(() => {
+      const id = pendingViewProductId;
+      if (id == null) return;
+      setPendingViewProductId(null);
+      clothesApi
+        .getById(id)
+        .then((res) => {
+          if (res?.data) {
+            const feedItem = wearToFeedItem(res.data);
+            setSelectedItem(feedItem);
+            setDrawerVisible(true);
+          }
+        })
+        .catch(() => {});
+    }, [pendingViewProductId, setPendingViewProductId]),
   );
 
   /** Show login modal after 3s of activity when not authenticated. */

@@ -412,12 +412,8 @@ export default function OrdersScreen() {
   }, [hasMore, loadingMore]);
 
   const handleStartOrder = useCallback(() => {
-    if (measurementProfiles.length === 0) {
-      setShowNoProfileModal(true);
-      return;
-    }
-    router.push("/(tabs)");
-  }, [measurementProfiles.length, router]);
+    router.push("/search");
+  }, [router]);
 
   const goToMeasurements = useCallback(() => {
     setShowNoProfileModal(false);

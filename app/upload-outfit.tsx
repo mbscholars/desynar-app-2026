@@ -43,7 +43,7 @@ export default function UploadOutfitScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <PageHeader onBack={onBack} title="Upload design" />
+      <PageHeader onBack={onBack} title="Upload your design" />
       <View style={styles.content}>
         <Text style={styles.title}>Add your outfit design</Text>
         <Text style={styles.subtitle}>

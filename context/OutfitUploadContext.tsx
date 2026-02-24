@@ -12,6 +12,9 @@ type OutfitUploadContextValue = {
   uploadingOutfit: boolean;
   /** Run picker + upload; sets uploadedItem on success. Call from "Upload design" in add popover. */
   startUpload: () => Promise<void>;
+  /** When set, home screen should fetch this product and open its detail drawer (e.g. after "Add to catalog" → View catalog). */
+  pendingViewProductId: number | null;
+  setPendingViewProductId: (id: number | null) => void;
 };
 
 const OutfitUploadContext = React.createContext<OutfitUploadContextValue | null>(
@@ -28,6 +31,7 @@ export function OutfitUploadProvider({ children }: { children: React.ReactNode }
   const { isAuthenticated } = useAuth();
   const [uploadedItem, setUploadedItem] = useState<FeedItem | null>(null);
   const [uploadingOutfit, setUploadingOutfit] = useState(false);
+  const [pendingViewProductId, setPendingViewProductId] = useState<number | null>(null);
 
   const startUpload = useCallback(async () => {
     if (!isAuthenticated) {
@@ -72,6 +76,8 @@ export function OutfitUploadProvider({ children }: { children: React.ReactNode }
     setUploadedItem,
     uploadingOutfit,
     startUpload,
+    pendingViewProductId,
+    setPendingViewProductId,
   };
 
   return (

@@ -294,7 +294,7 @@ export default function SearchResultsScreen() {
             style={({ pressed }) => [styles.headerBack, pressed && { opacity: 0.8 }]}
             hitSlop={12}
           >
-            <FontAwesome name="chevron-left" size={22} color={atelier.cta} />
+            <FontAwesome name="chevron-left" size={22} color={atelier.headerTextOnLight} />
           </Pressable>
           <Text style={styles.headerTitle} numberOfLines={1}>
             Results for &quot;{query || "…"}&quot;
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: atelier.background,
+    backgroundColor: "#FFFFFF",
   },
   centerContainer: {
     flex: 1,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     gap: spacing[3],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: atelier.divider,
+    borderBottomColor: "rgba(0, 0, 0, 0.12)",
   },
   headerBack: {
     width: 40,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.semibold,
-    color: atelier.cta,
+    color: atelier.headerTextOnLight,
   },
   gridContent: {
     padding: GRID_PADDING,

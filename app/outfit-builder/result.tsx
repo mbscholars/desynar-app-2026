@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useOutfitUpload } from "@/context/OutfitUploadContext";
 import { outfitBuilderColors } from "@/constants/outfitBuilder";
 import { spacing, typography } from "@/constants/theme";
 import { createProductFromOutfitGenerate } from "@/services/api/outfitBuilder";
@@ -37,6 +38,7 @@ function errorMessage(code: string): string {
 export default function OutfitBuilderResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setPendingViewProductId } = useOutfitUpload();
   const params = useLocalSearchParams<{ imageUrls?: string; jobId?: string }>();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [addingToCatalog, setAddingToCatalog] = useState(false);
@@ -68,12 +70,19 @@ export default function OutfitBuilderResultScreen() {
     try {
       const result = await createProductFromOutfitGenerate(jobId);
       if (result.success) {
+        const productId = result.productId;
         Alert.alert(
           "Added to catalog",
           `"${result.productName ?? "Generated Outfit"}" has been created as a draft. You can set the price and publish it from your catalog.`,
           [
             { text: "Done", onPress: () => router.replace("/outfit-builder") },
-            { text: "View catalog", onPress: () => router.replace("/(tabs)") },
+            {
+              text: "View",
+              onPress: () => {
+                if (productId != null) setPendingViewProductId(productId);
+                router.replace("/(tabs)");
+              },
+            },
           ],
         );
       } else {

@@ -65,6 +65,8 @@ export const atelier = {
   accent: "#C7BFAE",
   cta: "#F5F5F5",
   ctaText: "#0E0E0E",
+  /** Header text/icon color for use on white or light backgrounds. */
+  headerTextOnLight: "rgba(0, 0, 0, 0.87)",
   muted: "rgba(255, 255, 255, 0.5)",
   divider: "rgba(255,255,255,0.12)",
 } as const;
