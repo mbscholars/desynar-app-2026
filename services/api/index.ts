@@ -36,7 +36,10 @@ export type {
 export { ordersApi } from "./orders";
 export { searchApi } from "./search";
 export type { SearchSuggestion } from "./search";
-export type { GetOrdersParams } from "./orders";
+export type {
+  GetOrdersParams,
+  OutfitUploadResponse,
+} from "./orders";
 export { deleteAccount, getProfile } from "./profile";
 export type { UserProfile } from "./profile";
 export { getSession } from "./session";

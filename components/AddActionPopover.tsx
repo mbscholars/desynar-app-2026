@@ -73,16 +73,16 @@ export function AddActionPopover({
   }, [visible, scale, opacity]);
 
   const handleUploadDesign = () => {
-    onClose();
     onUploadDesign?.();
+    onClose();
   };
   const handleManageMeasurements = () => {
-    onClose();
     onManageMeasurements?.();
+    onClose();
   };
   const handleCreateWithAi = () => {
-    onClose();
     onCreateWithAi?.();
+    onClose();
   };
 
   return (

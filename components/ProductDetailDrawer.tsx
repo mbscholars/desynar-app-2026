@@ -2,6 +2,7 @@ import type { CartProfile } from "@/types/cart";
 import type { FeedItem } from "@/types/feed";
 import { getRelationshipLabel } from "@/types/measurement";
 import {
+  atelier,
   colors,
   radius,
   shadows,
@@ -203,7 +204,7 @@ export function ProductDetailDrawer({
             hitSlop={12}
             accessibilityLabel="Close"
           >
-            <FontAwesome name="times" size={18} color={colors.gray[700]} />
+            <FontAwesome name="times" size={18} color={atelier.cta} />
           </Pressable>
         </View>
         <Text style={drawerStyles.drawerPrice}>
@@ -239,7 +240,7 @@ export function ProductDetailDrawer({
                 drawerStyles.drawerCreatorAvatarPlaceholder,
               ]}
             >
-              <FontAwesome name="user" size={20} color={colors.gray[500]} />
+              <FontAwesome name="user" size={20} color={atelier.muted} />
             </View>
           )}
           <View style={drawerStyles.drawerCreatorInfo}>
@@ -286,7 +287,7 @@ export function ProductDetailDrawer({
           ]}
           accessibilityLabel="Share"
         >
-          <FontAwesome name="share-alt" size={18} color={colors.gray[700]} />
+          <FontAwesome name="share-alt" size={18} color={atelier.cta} />
         </Pressable>
       </View>
     </View>
@@ -301,7 +302,7 @@ export function ProductDetailDrawer({
           hitSlop={12}
           accessibilityLabel="Back"
         >
-          <FontAwesome name="arrow-left" size={20} color={colors.gray[700]} />
+          <FontAwesome name="arrow-left" size={20} color={atelier.cta} />
         </Pressable>
         <Text style={drawerStyles.drawerProfilesTitle}>Who is this for?</Text>
         <View style={drawerStyles.drawerBackBtnPlaceholder} />
@@ -309,7 +310,7 @@ export function ProductDetailDrawer({
 
       {profilesLoading ? (
         <View style={drawerStyles.drawerProfilesLoading}>
-          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <ActivityIndicator size="large" color={atelier.accent} />
           <Text style={drawerStyles.drawerProfilesLoadingText}>
             Loading profiles…
           </Text>
@@ -317,7 +318,7 @@ export function ProductDetailDrawer({
       ) : profiles.length === 0 ? (
         <View style={drawerStyles.drawerProfilesEmpty}>
           <View style={drawerStyles.drawerProfilesEmptyIcon}>
-            <FontAwesome name="user" size={32} color={colors.gray[400]} />
+            <FontAwesome name="user" size={32} color={atelier.muted} />
           </View>
           <Text style={drawerStyles.drawerProfilesEmptyTitle}>
             No measurement profiles
@@ -407,7 +408,7 @@ export function ProductDetailDrawer({
                           <FontAwesome
                             name="user"
                             size={28}
-                            color={colors.gray[400]}
+                            color={atelier.muted}
                           />
                         )}
                         <LinearGradient
@@ -434,7 +435,7 @@ export function ProductDetailDrawer({
                           <FontAwesome
                             name="check"
                             size={12}
-                            color={colors.primary[500]}
+                            color={atelier.accent}
                           />
                         </View>
                       ) : null}
@@ -498,8 +499,8 @@ export function ProductDetailDrawer({
       >
         <View style={drawerStyles.drawerSheetBlurWrap}>
           <BlurView
-            intensity={80}
-            tint="light"
+            intensity={100}
+            tint="dark"
             style={StyleSheet.absoluteFill}
           />
           <View style={drawerStyles.drawerSheetGlassOverlay} />
@@ -526,6 +527,7 @@ export function ProductDetailDrawer({
   );
 }
 
+/** Dark variant for home screen bottom sheet — atelier luxury palette. */
 const drawerStyles = StyleSheet.create({
   drawerSheetContainer: { flex: 1 },
   drawerSheetBackground: {
@@ -548,7 +550,7 @@ const drawerStyles = StyleSheet.create({
   },
   drawerSheetGlassOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.55)",
+    backgroundColor: "rgba(14,14,14,0.45)",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
@@ -561,7 +563,7 @@ const drawerStyles = StyleSheet.create({
     width: 48,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: atelier.divider,
   },
   drawerContentWrap: { flex: 1, overflow: "hidden", zIndex: 1 },
   drawerSlidingContent: { flex: 1, flexDirection: "row" },
@@ -580,7 +582,7 @@ const drawerStyles = StyleSheet.create({
   drawerTitle: {
     flex: 1,
     fontSize: typography.fontSize["2xl"],
-    color: colors.gray[900],
+    color: atelier.cta,
     fontFamily: typography.fontFamily.bold,
   },
   drawerCloseBtn: {
@@ -589,23 +591,23 @@ const drawerStyles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: atelier.panelBorder,
   },
   drawerPrice: {
     fontSize: 28,
-    color: colors.primary[500],
+    color: atelier.accent,
     fontFamily: typography.fontFamily.bold,
     marginTop: spacing[2],
   },
   drawerPriceLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.sans,
     marginTop: 2,
   },
   drawerDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[700],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.sans,
     lineHeight: 20,
     marginTop: spacing[4],
@@ -618,7 +620,7 @@ const drawerStyles = StyleSheet.create({
   },
   drawerTag: {
     fontSize: typography.fontSize.xs,
-    color: colors.primary[600],
+    color: atelier.accent,
     fontFamily: typography.fontFamily.sans,
   },
   drawerCreatorRow: {
@@ -627,24 +629,24 @@ const drawerStyles = StyleSheet.create({
     marginTop: spacing[6],
     paddingVertical: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    borderTopColor: atelier.divider,
     gap: spacing[3],
   },
   drawerCreatorAvatar: { width: 48, height: 48, borderRadius: 24 },
   drawerCreatorAvatarPlaceholder: {
-    backgroundColor: colors.gray[200],
+    backgroundColor: atelier.panelBorder,
     alignItems: "center",
     justifyContent: "center",
   },
   drawerCreatorInfo: { flex: 1 },
   drawerCreatorName: {
     fontSize: typography.fontSize.base,
-    color: colors.gray[900],
+    color: atelier.cta,
     fontFamily: typography.fontFamily.medium,
   },
   drawerCreatorTitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.sans,
     marginTop: 2,
   },
@@ -656,12 +658,12 @@ const drawerStyles = StyleSheet.create({
   },
   drawerMetaLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.medium,
   },
   drawerMetaValue: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[900],
+    color: atelier.cta,
     fontFamily: typography.fontFamily.sans,
   },
   drawerCtaRow: {
@@ -678,11 +680,11 @@ const drawerStyles = StyleSheet.create({
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[4],
     borderRadius: 12,
-    backgroundColor: colors.primary[500],
+    backgroundColor: atelier.cta,
   },
   drawerCtaText: {
     fontSize: typography.fontSize.lg,
-    color: "#FFFFFF",
+    color: atelier.ctaText,
     fontFamily: typography.fontFamily.bold,
   },
   drawerShareBtn: {
@@ -692,7 +694,7 @@ const drawerStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: atelier.panelBorder,
   },
   drawerCtaDisabled: { opacity: 0.5 },
   drawerProfilesHeader: {
@@ -713,7 +715,7 @@ const drawerStyles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.fontSize.xl,
     fontFamily: typography.fontFamily.semibold,
-    color: colors.gray[900],
+    color: atelier.cta,
   },
   drawerProfilesLoading: {
     paddingVertical: spacing[16],
@@ -722,7 +724,7 @@ const drawerStyles = StyleSheet.create({
   },
   drawerProfilesLoadingText: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.sans,
   },
   drawerProfilesEmpty: {
@@ -734,7 +736,7 @@ const drawerStyles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.gray[200],
+    backgroundColor: atelier.panelBorder,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing[4],
@@ -742,13 +744,13 @@ const drawerStyles = StyleSheet.create({
   drawerProfilesEmptyTitle: {
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.semibold,
-    color: colors.gray[900],
+    color: atelier.cta,
     marginBottom: spacing[2],
     textAlign: "center",
   },
   drawerProfilesEmptyBody: {
     fontSize: typography.fontSize.sm,
-    color: colors.gray[500],
+    color: atelier.muted,
     fontFamily: typography.fontFamily.sans,
     textAlign: "center",
     marginBottom: spacing[6],
@@ -759,7 +761,7 @@ const drawerStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing[2],
-    backgroundColor: colors.primary[500],
+    backgroundColor: atelier.cta,
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
     borderRadius: 16,
@@ -768,7 +770,7 @@ const drawerStyles = StyleSheet.create({
   drawerProfilesCreateBtnText: {
     fontSize: typography.fontSize.base,
     fontFamily: typography.fontFamily.medium,
-    color: "#FFFFFF",
+    color: atelier.ctaText,
   },
   drawerProfilesScroll: { flex: 1, minHeight: 0 },
   drawerProfilesScrollContent: { paddingBottom: spacing[2] },
@@ -778,16 +780,16 @@ const drawerStyles = StyleSheet.create({
     borderRadius: radius.xl,
     overflow: "hidden",
     ...shadows.soft,
-    backgroundColor: colors.gray[50],
+    backgroundColor: atelier.panel,
   },
   drawerProfileBlockSelected: {
     borderWidth: 2,
-    borderColor: colors.primary[500],
+    borderColor: atelier.accent,
   },
   drawerProfileBlockThumb: {
     width: "100%",
     aspectRatio: 3 / 4,
-    backgroundColor: colors.gray[200],
+    backgroundColor: atelier.panelBorder,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -822,8 +824,8 @@ const drawerStyles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.primary[500],
-    backgroundColor: "#FFFFFF",
+    borderColor: atelier.accent,
+    backgroundColor: atelier.cta,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -842,12 +844,12 @@ const drawerStyles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.primary[500],
+    borderColor: atelier.accent,
     backgroundColor: "transparent",
   },
   drawerCtaSecondaryText: {
     fontSize: typography.fontSize.base,
-    color: colors.primary[500],
+    color: atelier.accent,
     fontFamily: typography.fontFamily.semibold,
   },
 });

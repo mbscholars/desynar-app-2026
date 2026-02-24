@@ -62,10 +62,10 @@ export const atelier = {
   panel: "rgba(22,22,22,0.75)",
   panelBorder: "rgba(255,255,255,0.08)",
   panelGlow: "rgba(255,255,255,0.04)",
-  accent: "#C6A75E",
+  accent: "#C7BFAE",
   cta: "#F5F5F5",
   ctaText: "#0E0E0E",
-  muted: "rgba(255,255,255,0.5)",
+  muted: "rgba(255, 255, 255, 0.5)",
   divider: "rgba(255,255,255,0.12)",
 } as const;
 

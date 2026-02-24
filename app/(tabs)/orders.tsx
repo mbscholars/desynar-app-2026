@@ -108,6 +108,7 @@ interface OrderCardProps {
   onDelete?: () => void;
   onDuplicate?: () => void;
   onContact: () => void;
+  contactLoading?: boolean;
   onCancel?: () => void;
   onPayHolding?: () => void;
   onEdit?: () => void;
@@ -121,6 +122,7 @@ function OrderCard({
   onDelete,
   onDuplicate,
   onContact,
+  contactLoading,
   onCancel,
   onPayHolding,
   onEdit,
@@ -186,14 +188,19 @@ function OrderCard({
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              onContact();
+              if (!contactLoading) onContact();
             }}
+            disabled={contactLoading}
             style={({ pressed }) => [
               styles.cardActionBtn,
-              pressed && styles.cardActionPressed,
+              (pressed || contactLoading) && styles.cardActionPressed,
             ]}
           >
-            <Text style={styles.cardActionLabel}>Contact</Text>
+            {contactLoading ? (
+              <ActivityIndicator size="small" color={atelier.accent} />
+            ) : (
+              <Text style={styles.cardActionLabel}>Contact</Text>
+            )}
           </Pressable>
           {isDraftStatus && onDelete && (
             <Pressable
@@ -250,6 +257,9 @@ export default function OrdersScreen() {
   >("all");
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [contactingOrderId, setContactingOrderId] = useState<number | null>(
+    null,
+  );
 
   const getFilterCount = useCallback(
     (filterValue: string): number => {
@@ -430,6 +440,8 @@ export default function OrdersScreen() {
 
   const handleContactTailor = useCallback(
     async (order: Order) => {
+      if (contactingOrderId != null) return;
+      setContactingOrderId(order.id);
       try {
         const res = await chatApi.listConversations({
           order_id: order.id,
@@ -443,9 +455,11 @@ export default function OrdersScreen() {
         }
       } catch {
         router.push(`/(tabs)/inbox?order=${order.id}` as any);
+      } finally {
+        setContactingOrderId(null);
       }
     },
-    [router],
+    [router, contactingOrderId],
   );
 
   const handleDeleteOrder = useCallback(async (orderId: number) => {
@@ -684,6 +698,7 @@ export default function OrdersScreen() {
         item.status === "draft" ? () => handleDuplicateOrder(item) : undefined
       }
       onContact={() => handleContactTailor(item)}
+      contactLoading={contactingOrderId === item.id}
       onCancel={
         ACTIVE_STATUSES.includes(item.status)
           ? () => handleCancelOrder(item.id)

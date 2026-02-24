@@ -10,14 +10,12 @@ import { useCart } from "@/context/CartContext";
 import type {
     CreateBatchOrderItem,
     CreateBatchOrderRequest,
-    HoldingFeeDetails,
 } from "@/services/api/orders";
 import { ordersApi } from "@/services/api/orders";
 import type { CartItem } from "@/types/cart";
-import { formatPrice } from "@/utils/format";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Image,
@@ -28,25 +26,6 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
-
-const HOLDING_FEE_MINOR = 200000;
-
-/** After payment, Paystack redirects here. We intercept in WebView and auto-verify. App scheme is "desynar" (app.json). */
-const PAYMENT_SUCCESS_SCHEME = "desynar://payment-success";
-
-function parseReferenceFromCallbackUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.searchParams.get("reference") ??
-      parsed.searchParams.get("trxref") ??
-      null
-    );
-  } catch {
-    return null;
-  }
-}
 
 function getCartItemImageUri(item: CartItem): string {
   return (
@@ -54,29 +33,19 @@ function getCartItemImageUri(item: CartItem): string {
   );
 }
 
-type CheckoutPhase =
-  | "summary"
-  | "creating"
-  | "awaiting_payment"
-  | "verifying"
-  | "success"
-  | "failed";
+type CheckoutPhase = "summary" | "creating" | "success" | "failed";
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { items, clearCart, currency } = useCart();
+  const { items, clearCart } = useCart();
 
   const [phase, setPhase] = useState<CheckoutPhase>("summary");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [paymentReference, setPaymentReference] = useState<string | null>(null);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [orderReference, setOrderReference] = useState<string | null>(null);
   const [createdOrders, setCreatedOrders] = useState<
     { id: number; reference: string }[]
   >([]);
-  const paymentWebViewRef = useRef<WebView>(null);
-  const hasHandledRedirectRef = useRef(false);
 
   const totalItems = useMemo(
     () => items.reduce((sum, i) => sum + i.quantity, 0),
@@ -138,18 +107,10 @@ export default function CheckoutScreen() {
     return {
       payment_method: "paystack",
       items: orderItems,
-      callback_url: PAYMENT_SUCCESS_SCHEME,
     };
   }, [items]);
 
-  const openPaymentInApp = useCallback((details: HoldingFeeDetails) => {
-    hasHandledRedirectRef.current = false;
-    setPaymentReference(details.reference);
-    setPaymentUrl(details.payment_url);
-    setPhase("awaiting_payment");
-  }, []);
-
-  const handleContinueToPay = useCallback(async () => {
+  const handlePlaceOrder = useCallback(async () => {
     const payload = buildPayload();
     if (payload.items.length === 0) {
       setPhase("failed");
@@ -167,12 +128,13 @@ export default function CheckoutScreen() {
         setErrorMessage(res.message ?? "Failed to create order");
         return;
       }
-      const { orders, holding_fee } = res.data;
+      const { orders } = res.data;
       setOrderReference(orders[0]?.reference ?? null);
       setCreatedOrders(
         orders.map((o) => ({ id: o.id, reference: o.reference })),
       );
-      openPaymentInApp(holding_fee);
+      clearCart();
+      setPhase("success");
     } catch (e: unknown) {
       const msg =
         e instanceof Error
@@ -181,41 +143,7 @@ export default function CheckoutScreen() {
       setPhase("failed");
       setErrorMessage(msg);
     }
-  }, [buildPayload, openPaymentInApp]);
-
-  const verifyAndFinish = useCallback(
-    async (reference: string) => {
-      setPhase("verifying");
-      setErrorMessage(null);
-      try {
-        const result = await ordersApi.verifyPaystackPayment(reference);
-        if (result.success) {
-          clearCart();
-          setPhase("success");
-        } else {
-          setPhase("failed");
-          setErrorMessage(result.message ?? "Payment could not be verified.");
-        }
-      } catch (e: unknown) {
-        const msg =
-          e instanceof Error
-            ? e.message
-            : "Verification failed. If you already paid, contact support.";
-        setPhase("failed");
-        setErrorMessage(msg);
-      }
-    },
-    [clearCart],
-  );
-
-  const handleVerifyPayment = useCallback(() => {
-    if (paymentReference) verifyAndFinish(paymentReference);
-  }, [paymentReference, verifyAndFinish]);
-
-  const handleRetryPayment = useCallback(() => {
-    setPhase(paymentUrl ? "awaiting_payment" : "summary");
-    setErrorMessage(null);
-  }, [paymentUrl]);
+  }, [buildPayload, clearCart]);
 
   if (items.length === 0 && phase === "summary") {
     return (
@@ -256,19 +184,15 @@ export default function CheckoutScreen() {
           <View style={styles.successIconWrap}>
             <FontAwesome name="check-circle" size={72} color={atelier.accent} />
           </View>
-          <Text style={styles.successTitle}>Thank you</Text>
+          <Text style={styles.successTitle}>Order received</Text>
           <Text style={styles.successSubtitle}>
-            Your order is confirmed and we’re already working on it.
+            We’re working on this and expect a follow-up within 24 working hours.
           </Text>
           <Text style={styles.successBody}>
-            You’ll hear from your tailor within 24 hours with next steps—fabric
-            options, final pricing, and delivery timing. Your place in the queue
-            is secured.
+            Our team will reach out with next steps. You can track this order in
+            "My orders" anytime.
           </Text>
-          <Text style={styles.reassurance}>
-            We’ve got you. Sit back and we’ll take it from here.
-          </Text>
-          {orderReference ? (
+{orderReference ? (
             <Text style={styles.orderRef}>Order {orderReference}</Text>
           ) : null}
           <Pressable
@@ -289,125 +213,51 @@ export default function CheckoutScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <PageHeader
         onBack={onBack}
-        title={
-          phase === "failed"
-            ? "Payment issue"
-            : phase === "awaiting_payment" || phase === "verifying"
-              ? "Complete payment"
-              : "Checkout"
-        }
+        title={phase === "failed" ? "Order issue" : "Checkout"}
       />
 
-      {(phase === "creating" || phase === "verifying") && (
+      {phase === "creating" && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color={atelier.accent} />
-          <Text style={styles.overlayText}>
-            {phase === "creating" ? "Creating order…" : "Verifying payment…"}
-          </Text>
+          <Text style={styles.overlayText}>Creating order…</Text>
         </View>
       )}
 
-      {phase === "awaiting_payment" && paymentUrl != null ? (
-        <View style={styles.webViewWrap}>
-          <WebView
-            ref={paymentWebViewRef}
-            source={{ uri: paymentUrl }}
-            style={styles.webView}
-            originWhitelist={["https://*", "http://*", "desynar://*"]}
-            onShouldStartLoadWithRequest={(event) => {
-              const url =
-                event.nativeEvent?.url ?? (event as { url?: string }).url ?? "";
-              if (!url.startsWith(PAYMENT_SUCCESS_SCHEME)) return true;
-              if (hasHandledRedirectRef.current) return false;
-              hasHandledRedirectRef.current = true;
-              const refFromUrl = parseReferenceFromCallbackUrl(url);
-              const refToUse = refFromUrl ?? paymentReference;
-              if (refToUse) verifyAndFinish(refToUse);
-              return false;
-            }}
-            onError={(e) => {
-              setErrorMessage(
-                e.nativeEvent.description || "Payment page failed to load.",
-              );
-              setPhase("failed");
-            }}
-            onHttpError={(e) => {
-              if (e.nativeEvent.statusCode >= 400) {
-                setErrorMessage(
-                  "Payment page unavailable. Tap Reload or try again.",
-                );
-                setPhase("failed");
-              }
-            }}
+      {phase === "failed" && (
+        <View style={styles.errorBanner}>
+          <FontAwesome
+            name="exclamation-circle"
+            size={24}
+            color={atelier.cta}
           />
-          <View
-            style={[
-              styles.footer,
-              {
-                paddingBottom: Math.max(insets.bottom, spacing[4]),
-                paddingTop: spacing[4],
-              },
-            ]}
-          >
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <View style={styles.errorActions}>
             <Pressable
-              onPress={handleVerifyPayment}
-              disabled={phase === "verifying"}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                styles.primaryBtnFull,
-                pressed && styles.primaryBtnPressed,
-              ]}
-            >
-              <Text style={styles.primaryBtnText}>I’ve completed payment</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => paymentWebViewRef.current?.reload()}
+              onPress={() => {
+                setPhase("summary");
+                setErrorMessage(null);
+              }}
               style={({ pressed }) => [
                 styles.secondaryBtn,
-                styles.secondaryBtnFull,
                 pressed && styles.secondaryBtnPressed,
               ]}
             >
-              <Text style={styles.secondaryBtnText}>Reload payment page</Text>
+              <Text style={styles.secondaryBtnText}>Try again</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setPhase("summary")}
+              style={({ pressed }) => [
+                styles.secondaryBtn,
+                pressed && styles.secondaryBtnPressed,
+              ]}
+            >
+              <Text style={styles.secondaryBtnText}>Back to summary</Text>
             </Pressable>
           </View>
         </View>
-      ) : (
-        <>
-          {phase === "failed" && (
-            <View style={styles.errorBanner}>
-              <FontAwesome
-                name="exclamation-circle"
-                size={24}
-                color={atelier.cta}
-              />
-              <Text style={styles.errorText}>{errorMessage}</Text>
-              <View style={styles.errorActions}>
-                <Pressable
-                  onPress={handleRetryPayment}
-                  style={({ pressed }) => [
-                    styles.secondaryBtn,
-                    pressed && styles.secondaryBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.secondaryBtnText}>
-                    {paymentUrl ? "Try payment again" : "Try again"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setPhase("summary")}
-                  style={({ pressed }) => [
-                    styles.secondaryBtn,
-                    pressed && styles.secondaryBtnPressed,
-                  ]}
-                >
-                  <Text style={styles.secondaryBtnText}>Back to summary</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
+      )}
 
-          <ScrollView
+      <ScrollView
             style={styles.scroll}
             contentContainerStyle={[
               styles.scrollContent,
@@ -448,60 +298,41 @@ export default function CheckoutScreen() {
                     <Text style={styles.summaryLabel}>Total items</Text>
                     <Text style={styles.summaryValue}>{totalItems}</Text>
                   </View>
-                  <View style={[styles.summaryRow, styles.summaryRowTotal]}>
-                    <Text style={styles.summaryTotalLabel}>Holding fee</Text>
-                    <Text style={styles.summaryTotalValue}>
-                      {formatPrice(HOLDING_FEE_MINOR, currency)}
-                    </Text>
-                  </View>
-                  <Text style={styles.holdingFeeNote}>
-                    Secures your order and reserves a tailor slot. Final pricing
-                    from your tailor.
-                  </Text>
                 </View>
               </>
             )}
           </ScrollView>
 
-          {phase === "summary" && (
-            <View
-              style={[
-                styles.footer,
-                {
-                  paddingBottom: Math.max(insets.bottom, spacing[4]),
-                  paddingTop: spacing[4],
-                },
-              ]}
-            >
-              <Pressable
-                onPress={handleContinueToPay}
-                disabled={phase === "creating"}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  styles.primaryBtnFull,
-                  pressed && styles.primaryBtnPressed,
-                ]}
-              >
-                <Text style={styles.primaryBtnText}>Continue to pay</Text>
-              </Pressable>
-            </View>
-          )}
-        </>
+      {phase === "summary" && (
+        <View
+          style={[
+            styles.footer,
+            {
+              paddingBottom: Math.max(insets.bottom, spacing[4]),
+              paddingTop: spacing[4],
+            },
+          ]}
+        >
+          <Pressable
+            onPress={handlePlaceOrder}
+            disabled={phase === "creating"}
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              styles.primaryBtnFull,
+              pressed && styles.primaryBtnPressed,
+            ]}
+          >
+            <Text style={styles.primaryBtnText}>Place order</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: atelier.background,
-  },
-  webViewWrap: {
-    flex: 1,
-    minHeight: 0,
-  },
-  webView: {
     flex: 1,
     backgroundColor: atelier.background,
   },
@@ -577,33 +408,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: spacing[2],
   },
-  summaryRowTotal: {
-    marginTop: spacing[2],
-    paddingTop: spacing[3],
-    borderTopWidth: 1,
-    borderTopColor: atelier.divider,
-    marginBottom: 0,
-  },
   summaryLabel: { fontSize: typography.fontSize.sm, color: atelier.muted },
   summaryValue: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.medium,
     color: atelier.cta,
-  },
-  summaryTotalLabel: {
-    fontSize: typography.fontSize.base,
-    fontFamily: typography.fontFamily.semibold,
-    color: atelier.cta,
-  },
-  summaryTotalValue: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.semibold,
-    color: atelier.accent,
-  },
-  holdingFeeNote: {
-    fontSize: typography.fontSize.xs,
-    color: atelier.muted,
-    marginTop: spacing[3],
   },
   footer: {
     backgroundColor: atelier.background,
@@ -708,13 +517,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     marginBottom: spacing[4],
-  },
-  reassurance: {
-    fontSize: typography.fontSize.sm,
-    fontFamily: typography.fontFamily.medium,
-    color: atelier.accent,
-    textAlign: "center",
-    marginBottom: spacing[6],
   },
   orderRef: {
     fontSize: typography.fontSize.xs,

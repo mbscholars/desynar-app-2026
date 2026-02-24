@@ -29,9 +29,6 @@ const GRID_GAP = spacing[3];
 const CTA_BUTTON_HEIGHT = 54;
 const MIN_TAP = 44;
 
-/** Fixed holding fee in minor units (formatPrice divides by 100). Display: NGN 2,000. */
-const HOLDING_FEE_MINOR = 200000;
-
 /** Display image: accepted customization/try-on or product image. */
 function getCartItemImageUri(item: CartItem): string {
   return (
@@ -43,7 +40,7 @@ export default function ReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { items, updateQuantity, removeItem, currency } = useCart();
+  const { items, updateQuantity, removeItem } = useCart();
 
   const cardWidth = useMemo(() => {
     const horizontalPadding = spacing[6] * 2;
@@ -105,25 +102,18 @@ export default function ReviewScreen() {
             },
           ]}
         >
-          <View style={styles.ctaRow}>
-            <View>
-              <Text style={styles.ctaTotal}>
-                {formatPrice(HOLDING_FEE_MINOR, currency)}
-              </Text>
-              <Text style={styles.ctaHoldingFeeLabel}>Holding fee</Text>
-            </View>
-            <Pressable
-              onPress={onProceed}
-              style={({ pressed }) => [
-                styles.ctaButton,
-                pressed && styles.ctaButtonPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Proceed to Checkout"
-            >
-              <Text style={styles.ctaButtonText}>Proceed to Checkout</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={onProceed}
+            style={({ pressed }) => [
+              styles.ctaButton,
+              styles.ctaButtonFull,
+              pressed && styles.ctaButtonPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Proceed to Checkout"
+          >
+            <Text style={styles.ctaButtonText}>Proceed to Checkout</Text>
+          </Pressable>
         </View>
       )}
     </View>
@@ -353,23 +343,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: atelier.panelBorder,
   },
-  ctaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing[4],
-  },
-  ctaTotal: {
-    fontSize: typography.fontSize.xl,
-    fontFamily: typography.fontFamily.semibold,
-    color: atelier.cta,
-  },
-  ctaHoldingFeeLabel: {
-    fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.sans,
-    color: atelier.muted,
-    marginTop: spacing[1],
-  },
   ctaButton: {
     minHeight: CTA_BUTTON_HEIGHT,
     paddingHorizontal: spacing[6],
@@ -380,6 +353,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...shadows.soft,
   },
+  ctaButtonFull: { width: "100%" },
   ctaButtonPressed: { opacity: 0.97 },
   ctaButtonText: {
     fontSize: typography.fontSize.sm,

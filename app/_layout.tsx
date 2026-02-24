@@ -17,6 +17,7 @@ import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { MeasurementProfilesProvider } from "@/context/MeasurementProfilesContext";
+import { OutfitUploadProvider } from "@/context/OutfitUploadContext";
 
 export {
     // Catch any errors thrown by the Layout component.
@@ -62,9 +63,11 @@ export default function RootLayout() {
       <AuthProvider>
         <MeasurementProfilesProvider>
           <CartProvider>
-            <BottomSheetModalProvider>
-              <RootLayoutNav />
-            </BottomSheetModalProvider>
+            <OutfitUploadProvider>
+              <BottomSheetModalProvider>
+                <RootLayoutNav />
+              </BottomSheetModalProvider>
+            </OutfitUploadProvider>
           </CartProvider>
         </MeasurementProfilesProvider>
       </AuthProvider>
@@ -88,6 +91,8 @@ function RootLayoutNav() {
         <Stack.Screen name="review" />
         <Stack.Screen name="search" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="outfit-builder" />
+        <Stack.Screen name="upload-outfit" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>

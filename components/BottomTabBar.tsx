@@ -79,6 +79,11 @@ export function BottomTabBar({ activeTab = null }: BottomTabBarProps) {
     router.push("/measurements");
   }, [router]);
 
+  const handleCreateWithAi = useCallback(() => {
+    setAddPopoverOpen(false);
+    router.push("/outfit-builder");
+  }, [router]);
+
   const handleTabPress = useCallback(
     (path: string) => {
       router.push(path as any);
@@ -96,7 +101,7 @@ export function BottomTabBar({ activeTab = null }: BottomTabBarProps) {
         onClose={closeAddPopover}
         onUploadDesign={() => {}}
         onManageMeasurements={handleManageMeasurements}
-        onCreateWithAi={() => {}}
+        onCreateWithAi={handleCreateWithAi}
       />
       <View
         style={[

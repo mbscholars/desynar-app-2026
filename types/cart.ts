@@ -12,6 +12,9 @@ export type CartRevision = {
   isAccepted?: boolean;
 };
 
+/** Outfit source for create-batch: upload (image), store (catalog), ai (recommendation). */
+export type OutfitSource = "upload" | "store" | "ai";
+
 export type CartProduct = {
   id: number;
   imageUri: string;
@@ -26,6 +29,8 @@ export type CartProduct = {
   category?: string;
   /** Tailor/organization id for create-order API. Set when adding from feed. */
   organizationId?: number;
+  /** When "upload", backend expects product_id from outfit-upload and outfit_preview. */
+  outfit_source?: OutfitSource;
 };
 
 /** Per-line customizations: instructions, voice, AI revisions, accepted image (AI or try-on). */

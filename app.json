@@ -9,12 +9,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/logos/desynar-white.png",
       "resizeMode": "contain",
-      "backgroundColor": "#293225"
+      "backgroundColor": "#56624F"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.desynar.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +32,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#56624F",
+          "image": "./assets/logos/desynar-white.png",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -89,6 +89,62 @@ export interface PaystackVerificationResponse {
 
 const MAX_VOICE_NOTE_DURATION_SEC = 180; // 3 minutes
 
+// --- Outfit upload (Order Create: image upload) ---
+export interface OutfitUploadMedia {
+  id: number;
+  name: string;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  original_url: string;
+  preview_url: string;
+  full_url: string;
+  order_column: number;
+}
+
+export interface OutfitUploadResponse {
+  success: boolean;
+  message: string;
+  data: {
+    product_id: number;
+    name: string;
+    description: string;
+    status: string;
+    base_price: number | null;
+    type: string;
+    lead_time_days: number | null;
+    media: OutfitUploadMedia[];
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+const ALLOWED_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/heic",
+  "image/webp",
+] as const;
+const DEFAULT_MIME = "image/jpeg";
+
+function mimeFromUri(uri: string): string {
+  const ext = uri.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    heic: "image/heic",
+    webp: "image/webp",
+  };
+  return map[ext] ?? DEFAULT_MIME;
+}
+
+function fileNameFromUri(uri: string): string {
+  const parts = uri.split("/");
+  const last = parts[parts.length - 1] ?? "";
+  return last && last.includes(".") ? last : "outfit.jpg";
+}
+
 export interface VoiceNoteUploadResponse {
   success: boolean;
   data: {
@@ -149,6 +205,39 @@ export const ordersApi = {
       body: { reference, transaction_id: transactionId },
       requiresAuth: true,
     }),
+
+  /**
+   * Upload outfit image to create a product for order. POST /api/v1/orders/outfit-upload.
+   * Frontend should validate type (jpeg/png/heic/webp) and size (e.g. ≤10MB); compress to ~400KB if desired.
+   * Returns product_id and media URLs for cart and create-batch (outfit_source: "upload").
+   */
+  uploadOutfit: async (
+    fileUri: string,
+    name?: string,
+    description?: string,
+  ): Promise<OutfitUploadResponse> => {
+    const mime = mimeFromUri(fileUri);
+    if (!ALLOWED_IMAGE_MIMES.includes(mime as (typeof ALLOWED_IMAGE_MIMES)[number])) {
+      throw new Error("File must be an image (jpeg, png, heic, webp).");
+    }
+    const fileName = name?.trim() || fileNameFromUri(fileUri);
+    const formData = new FormData();
+    formData.append("file", {
+      uri: fileUri,
+      name: fileName.includes(".") ? fileName : `${fileName}.jpg`,
+      type: mime,
+    } as unknown as Blob);
+    if (name != null && name.trim() !== "") {
+      formData.append("name", name.trim());
+    }
+    if (description != null && description.trim() !== "") {
+      formData.append("description", description.trim());
+    }
+    return request<OutfitUploadResponse>("POST", `${BASE}/outfit-upload`, {
+      formData,
+      requiresAuth: true,
+    });
+  },
 
   /**
    * Upload voice note for order customization.

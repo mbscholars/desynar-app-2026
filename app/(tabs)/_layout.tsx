@@ -64,14 +64,24 @@ export default function TabLayout() {
     router.push("/measurements");
   }, [router]);
 
+  const handleCreateWithAi = useCallback(() => {
+    setAddPopoverOpen(false);
+    router.push("/outfit-builder");
+  }, [router]);
+
+  const handleUploadDesign = useCallback(() => {
+    closeAddPopover();
+    router.push("/upload-outfit");
+  }, [router]);
+
   return (
     <>
       <AddActionPopover
         visible={addPopoverOpen}
         onClose={closeAddPopover}
-        onUploadDesign={() => {}}
+        onUploadDesign={handleUploadDesign}
         onManageMeasurements={handleManageMeasurements}
-        onCreateWithAi={() => {}}
+        onCreateWithAi={handleCreateWithAi}
       />
       <Tabs
         screenOptions={{

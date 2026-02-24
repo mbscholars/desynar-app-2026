@@ -54,6 +54,7 @@ function productToCartProduct(p: {
   currency?: string;
   category?: string;
   organizationId?: number;
+  outfit_source?: "upload" | "store" | "ai";
 }): CartProduct {
   return {
     id: p.id,
@@ -68,6 +69,7 @@ function productToCartProduct(p: {
     currency: p.currency ?? "NGN",
     category: p.category,
     organizationId: p.organizationId,
+    outfit_source: p.outfit_source,
   };
 }
 

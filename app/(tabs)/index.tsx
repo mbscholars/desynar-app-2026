@@ -4,6 +4,7 @@ import { UserLogin } from "@/components/UserLogin";
 import { colors, spacing, typography } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useOutfitUpload } from "@/context/OutfitUploadContext";
 import { ApiError, clothesApi, notificationsApi } from "@/services/api";
 import type { CartProfile } from "@/types/cart";
 import type { FeedItem } from "@/types/feed";
@@ -47,11 +48,18 @@ export default function HomeScreen() {
   const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const { uploadedItem } = useOutfitUpload();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  /** Display list: uploaded outfit first (if any), then API feed. */
+  const displayFeed = useMemo(
+    () => (uploadedItem ? [uploadedItem, ...feed] : feed),
+    [uploadedItem, feed],
+  );
 
   const prevCartCountRef = useRef<number | null>(null);
   const cartScale = useRef(new Animated.Value(1)).current;
@@ -133,14 +141,22 @@ export default function HomeScreen() {
 
   const handleAddToCart = useCallback(
     (item: FeedItem, selectedProfiles: CartProfile[]) => {
-      addItem(item, selectedProfiles, 1);
+      addItem(
+        { ...item, outfit_source: item.outfitSource } as Parameters<typeof addItem>[0],
+        selectedProfiles,
+        1,
+      );
     },
     [addItem],
   );
 
   const handleMakeItNow = useCallback(
     (item: FeedItem, selectedProfiles: CartProfile[]) => {
-      addItem(item, selectedProfiles, 1);
+      addItem(
+        { ...item, outfit_source: item.outfitSource } as Parameters<typeof addItem>[0],
+        selectedProfiles,
+        1,
+      );
       (router.push as (href: string) => void)("/review");
     },
     [addItem, router],
@@ -212,6 +228,10 @@ export default function HomeScreen() {
     }),
     [feedHeight],
   );
+
+  const keyExtractor = useCallback((item: FeedItem) => {
+    return item.outfitSource === "upload" ? `upload_${item.id}` : String(item.id);
+  }, []);
 
   if (loading && feed.length === 0) {
     return (
@@ -327,7 +347,7 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {feed.length === 0 ? (
+        {displayFeed.length === 0 ? (
           <View style={[styles.centerContainer, styles.empty]}>
             <Text style={styles.emptyText}>No fashion content found.</Text>
           </View>
@@ -335,9 +355,9 @@ export default function HomeScreen() {
           <View style={styles.listWrap} onLayout={onListLayout}>
             <FlatList
               ref={listRef}
-              data={feed}
+              data={displayFeed}
               renderItem={renderItem}
-              keyExtractor={(item) => String(item.id)}
+              keyExtractor={keyExtractor}
               pagingEnabled
               snapToAlignment="start"
               snapToInterval={feedHeight}

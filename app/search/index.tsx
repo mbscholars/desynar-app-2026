@@ -301,6 +301,22 @@ export default function SearchScreen() {
             ))
           )}
         </View>
+
+        {/* Can't find it? Make it now — link to generate outfit */}
+        <View style={styles.makeItSection}>
+          <Text style={styles.makeItLabel}>Can't find it? </Text>
+          <Pressable
+            onPress={() => router.push("/outfit-builder")}
+            style={({ pressed }) => [
+              styles.makeItLink,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="link"
+            accessibilityLabel="Make it now, go to generate outfit"
+          >
+            <Text style={styles.makeItLinkText}>Make it now</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -460,12 +476,34 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     flex: 1,
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.sans,
     color: atelier.cta,
   },
   suggestionTextHighlighted: {
     color: colors.danger[500],
     fontFamily: typography.fontFamily.semibold,
+  },
+  makeItSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    paddingVertical: spacing[6],
+    marginTop: spacing[2],
+  },
+  makeItLabel: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.sans,
+    color: atelier.muted,
+  },
+  makeItLink: {
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[1],
+  },
+  makeItLinkText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semibold,
+    color: atelier.accent,
   },
 });
